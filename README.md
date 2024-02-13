@@ -4,7 +4,7 @@
 [Configure your AWS Credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)
 
 ## Getting Started
-Open the notebook, Generate Documentation, and run the cells in order to generate the documentation for the sample repository and store them in the index.
+Open the notebook, [Generate and Ingest Documentation](./Generate and Ingest Documentation.ipynb), and run the cells in order to generate the documentation for the sample repository and store them in the index.
 If you want to change the repository, you can change the `repo_url` and `ssh_url` to specify the repository you want to analyze.
 Then navigate to the Amazon Q for Business application and ask questions about the repository.
 
