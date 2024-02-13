@@ -1,4 +1,4 @@
-# Code Analyis using Amazon Q for Business
+# Code Analysis using Amazon Q for Business
 
 ## Pre-requisites
 [Configure your AWS Credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)
