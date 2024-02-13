@@ -1,0 +1,48 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AmazonQApplicationPutMetricDataPermission",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:PutMetricData"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "cloudwatch:namespace": "AWS/QBusiness"
+                }
+            }
+        },
+        {
+            "Sid": "AmazonQApplicationDescribeLogGroupsPermission",
+            "Effect": "Allow",
+            "Action": [
+                "logs:DescribeLogGroups"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AmazonQApplicationCreateLogGroupPermission",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup"
+            ],
+            "Resource": [
+                "arn:aws:logs:us-east-1:*:log-group:/aws/qbusiness/*"
+            ]
+        },
+        {
+            "Sid": "AmazonQApplicationLogStreamPermission",
+            "Effect": "Allow",
+            "Action": [
+                "logs:DescribeLogStreams",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": [
+                "arn:aws:logs:us-east-1:*:log-group:/aws/qbusiness/*:log-stream:*"
+            ]
+        }
+    ]
+}
