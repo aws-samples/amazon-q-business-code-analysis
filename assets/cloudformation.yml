@@ -1,0 +1,1791 @@
+Description: (uksb-1tupboc54) - Amazon Q Business Code Analysis stack
+Parameters:
+  ProjectName:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9][a-zA-Z0-9_-]*$
+    Description: The project name, for example langchain-agents.
+  RepositoryUrl:
+    Type: String
+    AllowedPattern: ^https?://.+(.git)$
+    Description: The Git URL of the repository to scan and ingest into Amazon Q Business. Note it should end with .git, i.e. https://github.com/aws-samples/langchain-agents.git
+  QAppUserId:
+    Type: String
+    Description: The user ID of the Amazon Q Business user. At the time of writing, any value will be accepted.
+  BootstrapVersion:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /cdk-bootstrap/hnb659fds/version
+    Description: Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]
+Resources:
+  QIamConstruct3765Role27F7932C:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: qbusiness.amazonaws.com
+        Version: "2012-10-17"
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action: cloudwatch:PutMetricData
+                Effect: Allow
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: AmazonQApplicationPutMetricDataPermission
+        - PolicyDocument:
+            Statement:
+              - Action: logs:DescribeLogGroups
+                Effect: Allow
+                Resource: "*"
+            Version: "2012-10-17"
+          PolicyName: AmazonQApplicationDescribeLogGroupsPermission
+        - PolicyDocument:
+            Statement:
+              - Action: logs:CreateLogGroup
+                Effect: Allow
+                Resource: arn:aws:logs:us-east-1:*:log-group:/aws/qbusiness/*
+            Version: "2012-10-17"
+          PolicyName: AmazonQApplicationCreateLogGroupPermission
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: arn:aws:logs:us-east-1:*:log-group:/aws/qbusiness/*:log-stream:*
+            Version: "2012-10-17"
+          PolicyName: AmazonQApplicationLogStreamPermission
+      RoleName: QBusiness-Application-3765
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/QIamConstruct-3765/Role/Resource
+  boto3v134402FA0F00E:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      CompatibleRuntimes:
+        - python3.12
+      Content:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: 8e03a01484bead4cdeec30f1ca8373edebb48221ad9fd392517ecca98e86340d.zip
+      Description: Boto3 v1.34.40
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/boto3v13440/Resource
+      aws:asset:path: asset.8e03a01484bead4cdeec30f1ca8373edebb48221ad9fd392517ecca98e86340d.zip
+      aws:asset:is-bundled: false
+      aws:asset:property: Content
+  QBusinessConstructQBusinessCustomLambdaRole241DF375:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+    DependsOn:
+      - boto3v134402FA0F00E
+      - QIamConstruct3765Role27F7932C
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/QBusinessConstruct/QBusinessCustomLambdaRole/Resource
+  QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - qbusiness:CreateApplication
+              - qbusiness:CreateIndex
+              - qbusiness:CreateRetriever
+              - qbusiness:DeleteApplication
+              - qbusiness:DeleteIndex
+              - qbusiness:DeleteRetriever
+              - qbusiness:GetApplication
+              - qbusiness:GetIndex
+              - qbusiness:GetRetriever
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:qbusiness:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :application/*
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - QIamConstruct3765Role27F7932C
+                - Arn
+        Version: "2012-10-17"
+      PolicyName: QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      Roles:
+        - Ref: QBusinessConstructQBusinessCustomLambdaRole241DF375
+    DependsOn:
+      - boto3v134402FA0F00E
+      - QIamConstruct3765Role27F7932C
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/QBusinessConstruct/QBusinessCustomLambdaRole/DefaultPolicy/Resource
+  QBusinessConstructQBusinessCustomResourceFunction4533FABD:
+    Type: AWS::Lambda::Function
+    Properties:
+      Architectures:
+        - arm64
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: 126c99b691c623dfb25773399e250efe3d83f4de5e7a0933e5447a13ca45a03b.zip
+      Environment:
+        Variables:
+          Q_APP_NAME:
+            Fn::Join:
+              - ""
+              - - Ref: ProjectName
+                - "-3765"
+          Q_APP_ROLE_ARN:
+            Fn::GetAtt:
+              - QIamConstruct3765Role27F7932C
+              - Arn
+      Handler: amazon_q_app_resource.on_event
+      Layers:
+        - Ref: boto3v134402FA0F00E
+      Role:
+        Fn::GetAtt:
+          - QBusinessConstructQBusinessCustomLambdaRole241DF375
+          - Arn
+      Runtime: python3.12
+      Timeout: 600
+    DependsOn:
+      - boto3v134402FA0F00E
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QIamConstruct3765Role27F7932C
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/QBusinessConstruct/QBusinessCustomResourceFunction/Resource
+      aws:asset:path: asset.126c99b691c623dfb25773399e250efe3d83f4de5e7a0933e5447a13ca45a03b
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    DependsOn:
+      - boto3v134402FA0F00E
+      - QIamConstruct3765Role27F7932C
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/QBusinessConstruct/QBusinessCustomResourceProvider/framework-onEvent/ServiceRole/Resource
+  QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+                        - Arn
+                    - :*
+        Version: "2012-10-17"
+      PolicyName: QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      Roles:
+        - Ref: QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    DependsOn:
+      - boto3v134402FA0F00E
+      - QIamConstruct3765Role27F7932C
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/QBusinessConstruct/QBusinessCustomResourceProvider/framework-onEvent/ServiceRole/DefaultPolicy/Resource
+  QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: 7382a0addb9f34974a1ea6c6c9b063882af874828f366f5c93b2b7b64db15c94.zip
+      Description: AWS CDK resource provider framework - onEvent (QBusinessCodeAnalysisCdkStack/QBusinessConstruct/QBusinessCustomResourceProvider)
+      Environment:
+        Variables:
+          USER_ON_EVENT_FUNCTION_ARN:
+            Fn::GetAtt:
+              - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+              - Arn
+      Handler: framework.onEvent
+      Role:
+        Fn::GetAtt:
+          - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+          - Arn
+      Runtime: nodejs18.x
+      Timeout: 900
+    DependsOn:
+      - boto3v134402FA0F00E
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+      - QIamConstruct3765Role27F7932C
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/QBusinessConstruct/QBusinessCustomResourceProvider/framework-onEvent/Resource
+      aws:asset:path: asset.7382a0addb9f34974a1ea6c6c9b063882af874828f366f5c93b2b7b64db15c94
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6:
+    Type: Custom::LogRetention
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A
+          - Arn
+      LogGroupName:
+        Fn::Join:
+          - ""
+          - - /aws/lambda/
+            - Ref: QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      RetentionInDays: 1
+    DependsOn:
+      - boto3v134402FA0F00E
+      - QIamConstruct3765Role27F7932C
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/QBusinessConstruct/QBusinessCustomResourceProvider/framework-onEvent/LogRetention/Resource
+  QBusinessConstructQBusinessCustomResource7412EAC1:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+          - Arn
+    DependsOn:
+      - boto3v134402FA0F00E
+      - QIamConstruct3765Role27F7932C
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/QBusinessConstruct/QBusinessCustomResource/Default
+  LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/Resource
+  LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - logs:DeleteRetentionPolicy
+              - logs:PutRetentionPolicy
+            Effect: Allow
+            Resource: "*"
+        Version: "2012-10-17"
+      PolicyName: LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB
+      Roles:
+        - Ref: LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/DefaultPolicy/Resource
+  LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Timeout: 900
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: 5bc602ecde93c947efe5899ae355f999986a1acbe610b1c0b9c468d738857555.zip
+      Role:
+        Fn::GetAtt:
+          - LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB
+          - Arn
+    DependsOn:
+      - LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB
+      - LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/Resource
+      aws:asset:path: asset.5bc602ecde93c947efe5899ae355f999986a1acbe610b1c0b9c468d738857555
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  AwsBatchConstructCodeBucketF7372944:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: aws-cdk:auto-delete-objects
+          Value: "true"
+        - Key: aws-cdk:cr-owned:code-processing:7ebd4e00
+          Value: "true"
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CodeBucket/Resource
+  AwsBatchConstructCodeBucketPolicy9BD4E9B6:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: AwsBatchConstructCodeBucketF7372944
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+            Effect: Deny
+            Principal:
+              AWS: "*"
+            Resource:
+              - Fn::GetAtt:
+                  - AwsBatchConstructCodeBucketF7372944
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - AwsBatchConstructCodeBucketF7372944
+                        - Arn
+                    - /*
+          - Action:
+              - s3:DeleteObject*
+              - s3:GetBucket*
+              - s3:List*
+              - s3:PutBucketPolicy
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092
+                  - Arn
+            Resource:
+              - Fn::GetAtt:
+                  - AwsBatchConstructCodeBucketF7372944
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - AwsBatchConstructCodeBucketF7372944
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CodeBucket/Policy/Resource
+  AwsBatchConstructCodeBucketAutoDeleteObjectsCustomResource2AC48C9B:
+    Type: Custom::S3AutoDeleteObjects
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F
+          - Arn
+      BucketName:
+        Ref: AwsBatchConstructCodeBucketF7372944
+    DependsOn:
+      - AwsBatchConstructCodeBucketPolicy9BD4E9B6
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CodeBucket/AutoDeleteObjectsCustomResource/Default
+  AwsBatchConstructCodeProcessingBucketAwsCliLayerA0543F4E:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      Content:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: 3322b7049fb0ed2b7cbb644a2ada8d1116ff80c32dca89e6ada846b5de26f961.zip
+      Description: /opt/awscli/aws
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CodeProcessingBucket/AwsCliLayer/Resource
+      aws:asset:path: asset.3322b7049fb0ed2b7cbb644a2ada8d1116ff80c32dca89e6ada846b5de26f961.zip
+      aws:asset:is-bundled: false
+      aws:asset:property: Content
+  AwsBatchConstructCodeProcessingBucketCustomResourceAB7C051A:
+    Type: Custom::CDKBucketDeployment
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C81C01536
+          - Arn
+      SourceBucketNames:
+        - Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+      SourceObjectKeys:
+        - 166b339978867ba557f3ba06f16bc6827f2550de4e610f8746dc522a7edef756.zip
+      DestinationBucketName:
+        Ref: AwsBatchConstructCodeBucketF7372944
+      DestinationBucketKeyPrefix: code-processing
+      Prune: true
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CodeProcessingBucket/CustomResource/Default
+  AwsBatchConstructVpc94EC4FC3:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/Resource
+  AwsBatchConstructVpcPublicSubnet1SubnetC4616B42:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.0.0/18
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1
+      VpcId:
+        Ref: AwsBatchConstructVpc94EC4FC3
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/Subnet
+  AwsBatchConstructVpcPublicSubnet1RouteTable778FF60E:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1
+      VpcId:
+        Ref: AwsBatchConstructVpc94EC4FC3
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/RouteTable
+  AwsBatchConstructVpcPublicSubnet1RouteTableAssociation38F37696:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: AwsBatchConstructVpcPublicSubnet1RouteTable778FF60E
+      SubnetId:
+        Ref: AwsBatchConstructVpcPublicSubnet1SubnetC4616B42
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/RouteTableAssociation
+  AwsBatchConstructVpcPublicSubnet1DefaultRouteB7669FFF:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: AwsBatchConstructVpcIGWF8512AC5
+      RouteTableId:
+        Ref: AwsBatchConstructVpcPublicSubnet1RouteTable778FF60E
+    DependsOn:
+      - AwsBatchConstructVpcVPCGWFFFC40BF
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/DefaultRoute
+  AwsBatchConstructVpcPublicSubnet1EIP35F824C5:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/EIP
+  AwsBatchConstructVpcPublicSubnet1NATGatewayDC0EF7DB:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - AwsBatchConstructVpcPublicSubnet1EIP35F824C5
+          - AllocationId
+      SubnetId:
+        Ref: AwsBatchConstructVpcPublicSubnet1SubnetC4616B42
+      Tags:
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1
+    DependsOn:
+      - AwsBatchConstructVpcPublicSubnet1DefaultRouteB7669FFF
+      - AwsBatchConstructVpcPublicSubnet1RouteTableAssociation38F37696
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/NATGateway
+  AwsBatchConstructVpcPublicSubnet2SubnetB89DF273:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.64.0/18
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Public
+        - Key: aws-cdk:subnet-type
+          Value: Public
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2
+      VpcId:
+        Ref: AwsBatchConstructVpc94EC4FC3
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/Subnet
+  AwsBatchConstructVpcPublicSubnet2RouteTable1987A559:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2
+      VpcId:
+        Ref: AwsBatchConstructVpc94EC4FC3
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/RouteTable
+  AwsBatchConstructVpcPublicSubnet2RouteTableAssociation1E341469:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: AwsBatchConstructVpcPublicSubnet2RouteTable1987A559
+      SubnetId:
+        Ref: AwsBatchConstructVpcPublicSubnet2SubnetB89DF273
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/RouteTableAssociation
+  AwsBatchConstructVpcPublicSubnet2DefaultRouteA3A4A04F:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: AwsBatchConstructVpcIGWF8512AC5
+      RouteTableId:
+        Ref: AwsBatchConstructVpcPublicSubnet2RouteTable1987A559
+    DependsOn:
+      - AwsBatchConstructVpcVPCGWFFFC40BF
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/DefaultRoute
+  AwsBatchConstructVpcPublicSubnet2EIP4993F697:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/EIP
+  AwsBatchConstructVpcPublicSubnet2NATGateway454ECA6D:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+          - AwsBatchConstructVpcPublicSubnet2EIP4993F697
+          - AllocationId
+      SubnetId:
+        Ref: AwsBatchConstructVpcPublicSubnet2SubnetB89DF273
+      Tags:
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2
+    DependsOn:
+      - AwsBatchConstructVpcPublicSubnet2DefaultRouteA3A4A04F
+      - AwsBatchConstructVpcPublicSubnet2RouteTableAssociation1E341469
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/NATGateway
+  AwsBatchConstructVpcPrivateSubnet1Subnet1B53BB99:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.128.0/18
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1
+      VpcId:
+        Ref: AwsBatchConstructVpc94EC4FC3
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1/Subnet
+  AwsBatchConstructVpcPrivateSubnet1RouteTable06823197:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1
+      VpcId:
+        Ref: AwsBatchConstructVpc94EC4FC3
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1/RouteTable
+  AwsBatchConstructVpcPrivateSubnet1RouteTableAssociation37D35DEC:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: AwsBatchConstructVpcPrivateSubnet1RouteTable06823197
+      SubnetId:
+        Ref: AwsBatchConstructVpcPrivateSubnet1Subnet1B53BB99
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1/RouteTableAssociation
+  AwsBatchConstructVpcPrivateSubnet1DefaultRoute0704CE1D:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: AwsBatchConstructVpcPublicSubnet1NATGatewayDC0EF7DB
+      RouteTableId:
+        Ref: AwsBatchConstructVpcPrivateSubnet1RouteTable06823197
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1/DefaultRoute
+  AwsBatchConstructVpcPrivateSubnet2Subnet48165E34:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      CidrBlock: 10.0.192.0/18
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: aws-cdk:subnet-name
+          Value: Private
+        - Key: aws-cdk:subnet-type
+          Value: Private
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2
+      VpcId:
+        Ref: AwsBatchConstructVpc94EC4FC3
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2/Subnet
+  AwsBatchConstructVpcPrivateSubnet2RouteTable246A5D99:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2
+      VpcId:
+        Ref: AwsBatchConstructVpc94EC4FC3
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2/RouteTable
+  AwsBatchConstructVpcPrivateSubnet2RouteTableAssociation124B23F5:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId:
+        Ref: AwsBatchConstructVpcPrivateSubnet2RouteTable246A5D99
+      SubnetId:
+        Ref: AwsBatchConstructVpcPrivateSubnet2Subnet48165E34
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2/RouteTableAssociation
+  AwsBatchConstructVpcPrivateSubnet2DefaultRouteB810E441:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: AwsBatchConstructVpcPublicSubnet2NATGateway454ECA6D
+      RouteTableId:
+        Ref: AwsBatchConstructVpcPrivateSubnet2RouteTable246A5D99
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2/DefaultRoute
+  AwsBatchConstructVpcIGWF8512AC5:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/IGW
+  AwsBatchConstructVpcVPCGWFFFC40BF:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId:
+        Ref: AwsBatchConstructVpcIGWF8512AC5
+      VpcId:
+        Ref: AwsBatchConstructVpc94EC4FC3
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/VPCGW
+  AwsBatchConstructVpcRestrictDefaultSecurityGroupCustomResourceE34A47F8:
+    Type: Custom::VpcRestrictDefaultSG
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E
+          - Arn
+      DefaultSecurityGroupId:
+        Fn::GetAtt:
+          - AwsBatchConstructVpc94EC4FC3
+          - DefaultSecurityGroup
+      Account:
+        Ref: AWS::AccountId
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/RestrictDefaultSecurityGroupCustomResource/Default
+  AwsBatchConstructComputeEnvSecurityGroupB4685586:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/ComputeEnv/SecurityGroup
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      VpcId:
+        Ref: AwsBatchConstructVpc94EC4FC3
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/ComputeEnv/SecurityGroup/Resource
+  AwsBatchConstructComputeEnv245CF25A:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      ComputeResources:
+        MaxvCpus: 256
+        SecurityGroupIds:
+          - Fn::GetAtt:
+              - AwsBatchConstructComputeEnvSecurityGroupB4685586
+              - GroupId
+        Subnets:
+          - Ref: AwsBatchConstructVpcPrivateSubnet1Subnet1B53BB99
+          - Ref: AwsBatchConstructVpcPrivateSubnet2Subnet48165E34
+        Type: FARGATE
+      ReplaceComputeEnvironment: false
+      State: ENABLED
+      Type: managed
+      UpdatePolicy: {}
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/ComputeEnv/Resource
+  AwsBatchConstructJobQueue70305CEA:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      ComputeEnvironmentOrder:
+        - ComputeEnvironment:
+            Fn::GetAtt:
+              - AwsBatchConstructComputeEnv245CF25A
+              - ComputeEnvironmentArn
+          Order: 1
+      Priority: 1
+      State: ENABLED
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/JobQueue/Resource
+  AwsBatchConstructJobExecutionRoleBD22FBF1:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: "2012-10-17"
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/JobExecutionRole/Resource
+  AwsBatchConstructJobExecutionRoleDefaultPolicy31BE51B6:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - qbusiness:BatchPutDocument
+              - qbusiness:ChatSync
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:qbusiness:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :application/*
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:logs:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :log-group:/aws/batch/*
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - QIamConstruct3765Role27F7932C
+                - Arn
+          - Action:
+              - s3:Abort*
+              - s3:DeleteObject*
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+              - s3:PutObject
+              - s3:PutObjectLegalHold
+              - s3:PutObjectRetention
+              - s3:PutObjectTagging
+              - s3:PutObjectVersionTagging
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - AwsBatchConstructCodeBucketF7372944
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - AwsBatchConstructCodeBucketF7372944
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+      PolicyName: AwsBatchConstructJobExecutionRoleDefaultPolicy31BE51B6
+      Roles:
+        - Ref: AwsBatchConstructJobExecutionRoleBD22FBF1
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/JobExecutionRole/DefaultPolicy/Resource
+  AwsBatchConstructMyJob9E4BDF96:
+    Type: AWS::Batch::JobDefinition
+    Properties:
+      ContainerProperties:
+        Environment: []
+        EphemeralStorage:
+          SizeInGiB: 21
+        ExecutionRoleArn:
+          Fn::GetAtt:
+            - AwsBatchConstructJobExecutionRoleBD22FBF1
+            - Arn
+        FargatePlatformConfiguration: {}
+        Image: public.ecr.aws/amazonlinux/amazonlinux:latest
+        JobRoleArn:
+          Fn::GetAtt:
+            - AwsBatchConstructJobExecutionRoleBD22FBF1
+            - Arn
+        NetworkConfiguration:
+          AssignPublicIp: DISABLED
+        ReadonlyRootFilesystem: false
+        ResourceRequirements:
+          - Type: MEMORY
+            Value: "2048"
+          - Type: VCPU
+            Value: "1"
+      PlatformCapabilities:
+        - FARGATE
+      RetryStrategy: {}
+      Timeout: {}
+      Type: container
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/MyJob/Resource
+  AwsBatchConstructSubmitJobRoleCE7BBC12:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SubmitJobRole/Resource
+  AwsBatchConstructSubmitJobRoleDefaultPolicy4A2B7AAA:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - qbusiness:ListApplications
+              - qbusiness:ListIndices
+            Effect: Allow
+            Resource: "*"
+          - Action: iam:PassRole
+            Effect: Allow
+            Resource:
+              Fn::GetAtt:
+                - AwsBatchConstructJobExecutionRoleBD22FBF1
+                - Arn
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource:
+              Fn::Join:
+                - ""
+                - - "arn:aws:logs:"
+                  - Ref: AWS::Region
+                  - ":"
+                  - Ref: AWS::AccountId
+                  - :log-group:/aws/lambda/*
+          - Action: batch:SubmitJob
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - AwsBatchConstructJobQueue70305CEA
+                  - JobQueueArn
+              - Ref: AwsBatchConstructMyJob9E4BDF96
+        Version: "2012-10-17"
+      PolicyName: AwsBatchConstructSubmitJobRoleDefaultPolicy4A2B7AAA
+      Roles:
+        - Ref: AwsBatchConstructSubmitJobRoleCE7BBC12
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SubmitJobRole/DefaultPolicy/Resource
+  AwsBatchConstructSubmitJobLambdaB646008C:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: a0d5c55d46bd283b1d09644c05d6c85df9268608a67e6477fcf0bb4d47078017.zip
+      Environment:
+        Variables:
+          BATCH_JOB_DEFINITION:
+            Ref: AwsBatchConstructMyJob9E4BDF96
+          BATCH_JOB_QUEUE:
+            Fn::GetAtt:
+              - AwsBatchConstructJobQueue70305CEA
+              - JobQueueArn
+          REPO_URL:
+            Ref: RepositoryUrl
+          Q_APP_NAME:
+            Fn::Join:
+              - ""
+              - - Ref: ProjectName
+                - "-3765"
+          Q_APP_ROLE_ARN:
+            Fn::GetAtt:
+              - QIamConstruct3765Role27F7932C
+              - Arn
+          S3_BUCKET:
+            Ref: AwsBatchConstructCodeBucketF7372944
+          Q_APP_USER_ID:
+            Ref: QAppUserId
+      Handler: submit_batch_job.on_event
+      Layers:
+        - Ref: boto3v134402FA0F00E
+      MemorySize: 512
+      Role:
+        Fn::GetAtt:
+          - AwsBatchConstructSubmitJobRoleCE7BBC12
+          - Arn
+      Runtime: python3.12
+      Timeout: 300
+    DependsOn:
+      - AwsBatchConstructMyJob9E4BDF96
+      - AwsBatchConstructSubmitJobRoleDefaultPolicy4A2B7AAA
+      - AwsBatchConstructSubmitJobRoleCE7BBC12
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SubmitJobLambda/Resource
+      aws:asset:path: asset.a0d5c55d46bd283b1d09644c05d6c85df9268608a67e6477fcf0bb4d47078017
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  AwsBatchConstructSubmitJobLambdaProviderframeworkonEventServiceRole88C6F950:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SubmitJobLambdaProvider/framework-onEvent/ServiceRole/Resource
+  AwsBatchConstructSubmitJobLambdaProviderframeworkonEventServiceRoleDefaultPolicyCE8C2943:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action: lambda:InvokeFunction
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - AwsBatchConstructSubmitJobLambdaB646008C
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - AwsBatchConstructSubmitJobLambdaB646008C
+                        - Arn
+                    - :*
+        Version: "2012-10-17"
+      PolicyName: AwsBatchConstructSubmitJobLambdaProviderframeworkonEventServiceRoleDefaultPolicyCE8C2943
+      Roles:
+        - Ref: AwsBatchConstructSubmitJobLambdaProviderframeworkonEventServiceRole88C6F950
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SubmitJobLambdaProvider/framework-onEvent/ServiceRole/DefaultPolicy/Resource
+  AwsBatchConstructSubmitJobLambdaProviderframeworkonEventBD1207D3:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: 7382a0addb9f34974a1ea6c6c9b063882af874828f366f5c93b2b7b64db15c94.zip
+      Description: AWS CDK resource provider framework - onEvent (QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SubmitJobLambdaProvider)
+      Environment:
+        Variables:
+          USER_ON_EVENT_FUNCTION_ARN:
+            Fn::GetAtt:
+              - AwsBatchConstructSubmitJobLambdaB646008C
+              - Arn
+      Handler: framework.onEvent
+      Role:
+        Fn::GetAtt:
+          - AwsBatchConstructSubmitJobLambdaProviderframeworkonEventServiceRole88C6F950
+          - Arn
+      Runtime: nodejs18.x
+      Timeout: 900
+    DependsOn:
+      - AwsBatchConstructSubmitJobLambdaProviderframeworkonEventServiceRoleDefaultPolicyCE8C2943
+      - AwsBatchConstructSubmitJobLambdaProviderframeworkonEventServiceRole88C6F950
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SubmitJobLambdaProvider/framework-onEvent/Resource
+      aws:asset:path: asset.7382a0addb9f34974a1ea6c6c9b063882af874828f366f5c93b2b7b64db15c94
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  AwsBatchConstructSubmitJobLambdaProviderframeworkonEventLogRetentionD039B1DA:
+    Type: Custom::LogRetention
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A
+          - Arn
+      LogGroupName:
+        Fn::Join:
+          - ""
+          - - /aws/lambda/
+            - Ref: AwsBatchConstructSubmitJobLambdaProviderframeworkonEventBD1207D3
+      RetentionInDays: 1
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SubmitJobLambdaProvider/framework-onEvent/LogRetention/Resource
+  AwsBatchConstructSubmitJobLambdaCustomResource73BEE720:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken:
+        Fn::GetAtt:
+          - AwsBatchConstructSubmitJobLambdaProviderframeworkonEventBD1207D3
+          - Arn
+    DependsOn:
+      - QBusinessConstructQBusinessCustomLambdaRoleDefaultPolicy1AC7942A
+      - QBusinessConstructQBusinessCustomLambdaRole241DF375
+      - QBusinessConstructQBusinessCustomResource7412EAC1
+      - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventLogRetention3AAECCD6
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEvent682DD9FE
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRoleDefaultPolicyB51BC59A
+      - QBusinessConstructQBusinessCustomResourceProviderframeworkonEventServiceRole31220E69
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SubmitJobLambdaCustomResource/Default
+  CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+      ManagedPolicyArns:
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role
+  CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: b7f33614a69548d6bafe224d751a7ef238cde19097415e553fe8b63a4c8fd8a6.zip
+      Timeout: 900
+      MemorySize: 128
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+          - CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092
+          - Arn
+      Runtime: nodejs18.x
+      Description:
+        Fn::Join:
+          - ""
+          - - "Lambda function for auto-deleting objects in "
+            - Ref: AwsBatchConstructCodeBucketF7372944
+            - " S3 bucket."
+    DependsOn:
+      - CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler
+      aws:asset:path: asset.b7f33614a69548d6bafe224d751a7ef238cde19097415e553fe8b63a4c8fd8a6
+      aws:asset:property: Code
+  CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/Resource
+  CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+            Effect: Allow
+            Resource:
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":s3:::"
+                    - Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+                    - /*
+              - Fn::Join:
+                  - ""
+                  - - "arn:"
+                    - Ref: AWS::Partition
+                    - ":s3:::"
+                    - Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+          - Action:
+              - s3:Abort*
+              - s3:DeleteObject*
+              - s3:GetBucket*
+              - s3:GetObject*
+              - s3:List*
+              - s3:PutObject
+              - s3:PutObjectLegalHold
+              - s3:PutObjectRetention
+              - s3:PutObjectTagging
+              - s3:PutObjectVersionTagging
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - AwsBatchConstructCodeBucketF7372944
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - AwsBatchConstructCodeBucketF7372944
+                        - Arn
+                    - /*
+        Version: "2012-10-17"
+      PolicyName: CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF
+      Roles:
+        - Ref: CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/DefaultPolicy/Resource
+  CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C81C01536:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: 0b1f5aa55d045066ed91316b823a808060c12737e0575ab7cefe2335324108b0.zip
+      Environment:
+        Variables:
+          AWS_CA_BUNDLE: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+      Handler: index.handler
+      Layers:
+        - Ref: AwsBatchConstructCodeProcessingBucketAwsCliLayerA0543F4E
+      Role:
+        Fn::GetAtt:
+          - CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265
+          - Arn
+      Runtime: python3.9
+      Timeout: 900
+    DependsOn:
+      - CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF
+      - CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/Resource
+      aws:asset:path: asset.0b1f5aa55d045066ed91316b823a808060c12737e0575ab7cefe2335324108b0
+      aws:asset:is-bundled: false
+      aws:asset:property: Code
+  CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+      ManagedPolicyArns:
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: Inline
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:AuthorizeSecurityGroupEgress
+                  - ec2:RevokeSecurityGroupIngress
+                  - ec2:RevokeSecurityGroupEgress
+                Resource:
+                  - Fn::Join:
+                      - ""
+                      - - "arn:"
+                        - Ref: AWS::Partition
+                        - ":ec2:"
+                        - Ref: AWS::Region
+                        - ":"
+                        - Ref: AWS::AccountId
+                        - :security-group/
+                        - Fn::GetAtt:
+                            - AwsBatchConstructVpc94EC4FC3
+                            - DefaultSecurityGroup
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Role
+  CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Fn::Sub: cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}
+        S3Key: 7f18a11296f35510ee16538afec983ed6312e12afbf81b777089a9f8e34e2474.zip
+      Timeout: 900
+      MemorySize: 128
+      Handler: __entrypoint__.handler
+      Role:
+        Fn::GetAtt:
+          - CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0
+          - Arn
+      Runtime: nodejs18.x
+      Description: Lambda function for removing all inbound/outbound rules from the VPC default security group
+    DependsOn:
+      - CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Handler
+      aws:asset:path: asset.7f18a11296f35510ee16538afec983ed6312e12afbf81b777089a9f8e34e2474
+      aws:asset:property: Code
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Analytics: v2:deflate64:H4sIAAAAAAAA/21TTU/jMBD9LXt3vZQ9oD2WUhAIQUhXvUYTZwimjl35o1UU5b8ztkvSXe1pnt+8Gb9xJtd8ubziVz/g5Bai2S+UrPmw9SD2bP2uC7DQoUfLKF8NEjo+lEZhzKVYGCVFn6QJjUxBVzfAh2fo0e7QOml0zP91vg9a+HNiwlupW4XeTMzI3K9qAOfQO76KgTV4UKbvUHt+G8Qe/d1ERDUfMnsLDlmG8YozymG2fHkm46Z1/Nm0Jc2rkyEU13zYHUTU7oo1K0JN0m2odW47o9IEj3+gzi+T+Zkj60ZI+B44JSLYPBYxvIB/AI8n6Flh5ZHg3PhR0+MT/hZkJ+fTytN3+oizsy2KYKXvH6wJh+ThkhhZDV588OEebEu1a9MdyMNGH6U1OjWgkv+wT6Z+CxiS2wlvhJv6aA9So73Dd6llGpCypLwgculMjCMr0ZlgRWr7GjzdytLnpb1raQmYCM6brrJnmeOFNUfZ0BrG55uKk2o65sWrVNyzitZVKMlXJ7dWMq3eP/LLjjRGk60xbRrkn+7ncfmb39Bv8emkXNhA+9AhL3P8Ard3HgEzAwAA
+    Metadata:
+      aws:cdk:path: QBusinessCodeAnalysisCdkStack/CDKMetadata/Default
+    Condition: CDKMetadataAvailable
+Outputs:
+  QIamConstruct3765QBusinessRoleArnC7421D7D:
+    Value:
+      Fn::GetAtt:
+        - QIamConstruct3765Role27F7932C
+        - Arn
+  QBusinessConstructQBusinessAppFunctionArnDA7C68E3:
+    Value:
+      Fn::GetAtt:
+        - QBusinessConstructQBusinessCustomResourceFunction4533FABD
+        - Arn
+  QBusinessAppName:
+    Description: Amazon Q Business Application Name
+    Value:
+      Fn::Join:
+        - ""
+        - - Ref: ProjectName
+          - "-3765"
+Conditions:
+  CDKMetadataAvailable:
+    Fn::Or:
+      - Fn::Or:
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - af-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-east-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-northeast-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-northeast-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-southeast-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ap-southeast-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - ca-central-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - cn-north-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - cn-northwest-1
+      - Fn::Or:
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-central-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-north-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-west-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-west-2
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - eu-west-3
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - me-south-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - sa-east-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - us-east-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - us-east-2
+      - Fn::Or:
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - us-west-1
+          - Fn::Equals:
+              - Ref: AWS::Region
+              - us-west-2
+Rules:
+  CheckBootstrapVersion:
+    Assertions:
+      - Assert:
+          Fn::Not:
+            - Fn::Contains:
+                - - "1"
+                  - "2"
+                  - "3"
+                  - "4"
+                  - "5"
+                - Ref: BootstrapVersion
+        AssertDescription: CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI.
+
