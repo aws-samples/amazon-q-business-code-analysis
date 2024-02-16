@@ -1,4 +1,4 @@
-# Code Analyis using Amazon Q for Business
+# Code Analyis through Pre-Processing with Amazon Q for Business
 
 ## Introduction
 This project demonstrates how to use Amazon Q for Business to analyze code. We will use the Amazon Q for Business application to pre-process a code base by first generating documentation about the code. We will then ingest the documentation into the Amazon Q application's index. This will allow us to pull more relevant information from the index when we ask questions about the code.
