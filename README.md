@@ -19,7 +19,7 @@ We've made this easy by providing pre-built AWS CloudFormation templates that de
 3. Enter the following parameters:
     1. `Stack Name`: Name your App, e.g. LANGCHAIN-AGENTS-ANALYSIS.
     2. `ProjectName`: The project name you want to use, i.e. Langchain-Agents.
-    3. `QAppUserId`: Choose the user you want to use for the Amazon Q for Business application.
+    3. `QAppUserId`: Choose the user you want to use for the Amazon Q for Business application (at the time of writing userId can be anything, i.e. example@example.com)
     4. `RepositoryUrl`: The URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
 
 Region | Easy Deploy Button | Template URL - use to upgrade existing stack to a new release
