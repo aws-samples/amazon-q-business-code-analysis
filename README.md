@@ -6,8 +6,6 @@ This solution uses Amazon Q for Business to analyze code through pre-processing.
 This allows one to understand their code base and generate detailed next steps to improve the codebase or to add new features. This also integrates nicely with Plugins for Amazon Q like JIRA, allowing us to rapidly find opportunities for improvement and immediately create tickets for them.
 
 ## Pre-requisites
-[Configure your AWS Credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)
-
 [CDK bootstrap](https://docs.aws.amazon.com/cdk/latest/guide/bootstrapping.html) `npm i cdk && npx cdk bootstrap`
 
 ## Deploy the solution using Cloudformation
@@ -35,7 +33,7 @@ N. Virginia (us-east-1) | [![Launch Stack](https://cdn.rawgit.com/buildkite/clou
 
 ## Use the Jupyter Notebook
 
-Open the notebook, Generate Documentation, and run the cells in order to generate the documentation for the sample repository and store them in the index.
+Open the notebook, [Generate-and-Ingest-Documentation](./notebooks/Generate-and-Ingest-Documentation.ipynb), and run the cells in order to generate the documentation for the sample repository and store them in the index.
 If you want to change the repository, you can change the `repo_url` and `ssh_url` to specify the repository you want to analyze.
 Then navigate to the Amazon Q for Business application and ask questions about the repository.
 
