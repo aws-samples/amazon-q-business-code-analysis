@@ -31,6 +31,10 @@ N. Virginia (us-east-1) | [![Launch Stack](https://cdn.rawgit.com/buildkite/clou
 2. Click on the application you just created.
 3. Click on the live web experience and start using the chat interface.
 
+## Architecture
+<!-- Link to architecture diagram in assets/ -->
+![Architecture](./assets/architecture.jpg)
+
 ## Use the Jupyter Notebook
 
 Open the notebook, [Generate-and-Ingest-Documentation](./notebooks/Generate-and-Ingest-Documentation.ipynb), and run the cells in order to generate the documentation for the sample repository and store them in the index.
