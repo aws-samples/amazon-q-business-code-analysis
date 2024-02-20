@@ -6,25 +6,27 @@ This solution uses Amazon Q for Business to analyze code through pre-processing.
 This allows one to understand their code base and generate detailed next steps to improve the codebase or to add new features. This also integrates nicely with Plugins for Amazon Q like JIRA, allowing us to rapidly find opportunities for improvement and immediately create tickets for them.
 
 ## Pre-requisites
-[CDK bootstrap](https://docs.aws.amazon.com/cdk/latest/guide/bootstrapping.html) `npm i -g cdk && cdk bootstrap`
+[Configure your AWS Credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)
+[CDK bootstrap](https://docs.aws.amazon.com/cdk/latest/guide/bootstrapping.html) run `npm i -g cdk && npx cdk bootstrap`
 
-## Deploy the solution using Cloudformation
+## Deploy the solution using CDK
 
-### 1. Deploy the stack
+### Install dependencies 
 
-We've made this easy by providing pre-built AWS CloudFormation templates that deploy everything you need in your AWS account.
+Write the following commands in the terminal to get started with the project.
 
-1. Log into the [AWS console](https://console.aws.amazon.com/) if you are not already.
-2. Choose one of the **Launch Stack** buttons below for your desired AWS region to open the AWS CloudFormation console and create a new stack.
-3. Enter the following parameters:
-    1. `Stack Name`: Name your App, e.g. LANGCHAIN-AGENTS-ANALYSIS.
-    2. `ProjectName`: The project name you want to use, i.e. Langchain-Agents.
-    3. `QAppUserId`: Choose the user you want to use for the Amazon Q for Business application (at the time of writing userId can be anything, i.e. example@example.com)
-    4. `RepositoryUrl`: The URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
+```bash
+git clone https://github.com/aws-samples/amazon-q-business-code-analysis.git
+cd amazon-q-business-code-analysis/cdk
+npm install
+npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters QAppUserId=<user_id> --parameters ProjectName=<project_name> --require-approval never
+```
 
-Region | Easy Deploy Button | Template URL - use to upgrade existing stack to a new release
---- | --- | ---
-N. Virginia (us-east-1) | [![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://us-east-1-amazon-q-business-code-analysis.s3.amazonaws.com/cloudformation.yml) | https://us-east-1-amazon-q-business-code-analysis.s3.amazonaws.com/cloudformation.yml
+Example:
+
+```bash
+npx cdk deploy --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters QAppUserId=email@example.com --parameters ProjectName=Langchain-Agents --require-approval never
+```
 
 ### 2. Access the Amazon Q for Business application
 1. Navigate to the [Amazon Q for Business application](https://us-east-1.console.aws.amazon.com/amazonq/home?region=us-east-1#applications).
@@ -40,9 +42,6 @@ N. Virginia (us-east-1) | [![Launch Stack](https://cdn.rawgit.com/buildkite/clou
 Open the notebook, [Generate-and-Ingest-Documentation](./notebooks/Generate-and-Ingest-Documentation.ipynb), and run the cells in order to generate the documentation for the sample repository and store them in the index.
 If you want to change the repository, you can change the `repo_url` and `ssh_url` to specify the repository you want to analyze.
 Then navigate to the Amazon Q for Business application and ask questions about the repository.
-
-## Deploy the solution using CDK
-The CDK code in the `cdk` directory deploys the resources needed to set up the Q Business Code Analysis sample. Just input the repo you want to analyze in the parameters and deploy the stack. For more details, see the [README](./cdk/README.md).
 
 ## Introduction
 Amazon Q for Business is good at using connectors to index data and then allowing you to chat with that data using a managed RAG system. However, as anyone familiar with RAG will know, pulling the most semantically similar data is not always the best way to get the most relevant data. Particularly when dealing with chunks of code. This is where Amazon Q for Business without data pre-processing falls short.
