@@ -25,7 +25,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
       const awsAccountId = cdk.Stack.of(this).account;
 
       // Upload the code to S3
-      const s3Bucket = new cdk.aws_s3.Bucket(this, 'CodeBucket', {
+      const s3Bucket = new cdk.aws_s3.Bucket(this, 'CodeProcessingBucket', {
         removalPolicy: cdk.RemovalPolicy.DESTROY,
         autoDeleteObjects: true,
         blockPublicAccess: cdk.aws_s3.BlockPublicAccess.BLOCK_ALL,
@@ -33,7 +33,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
         enforceSSL: true,
       });
 
-      new cdk.aws_s3_deployment.BucketDeployment(this, "CodeProcessingBucket", {
+      new cdk.aws_s3_deployment.BucketDeployment(this, "CodeProcessingBucketScript", {
         sources: [
           cdk.aws_s3_deployment.Source.asset(
               "lib/assets/scripts"
@@ -47,11 +47,11 @@ export class AwsBatchAnalysisConstruct extends Construct {
         maxAzs: 2,
       });
 
-      const computeEnvironment = new batch.FargateComputeEnvironment(this, 'ComputeEnv', {
+      const computeEnvironment = new batch.FargateComputeEnvironment(this, 'QScriptComputeEnv', {
         vpc,
       });
 
-      const jobQueue = new batch.JobQueue(this, 'JobQueue', {
+      const jobQueue = new batch.JobQueue(this, 'QProcessingJobQueue', {
         priority: 1,
         computeEnvironments: [
           {
@@ -61,7 +61,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
         ],
       });
 
-      const jobExecutionRole = new cdk.aws_iam.Role(this, 'JobExecutionRole', {
+      const jobExecutionRole = new cdk.aws_iam.Role(this, 'QProcessingJobExecutionRole', {
         assumedBy: new cdk.aws_iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       });
 
@@ -97,7 +97,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
 
       s3Bucket.grantReadWrite(jobExecutionRole);
 
-      const jobDefinition = new batch.EcsJobDefinition(this, 'MyJob', {
+      const jobDefinition = new batch.EcsJobDefinition(this, 'QBusinessJob', {
         container: new batch.EcsFargateContainerDefinition(this, 'Container', {
           image: ecs.ContainerImage.fromRegistry('public.ecr.aws/amazonlinux/amazonlinux:latest'),
           memory: cdk.Size.gibibytes(2),
@@ -109,7 +109,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
       });
 
       // Role to submit job
-      const submitJobRole = new cdk.aws_iam.Role(this, 'SubmitJobRole', {
+      const submitJobRole = new cdk.aws_iam.Role(this, 'QBusinessSubmitJobRole', {
         assumedBy: new cdk.aws_iam.ServicePrincipal('lambda.amazonaws.com'),
       });
 
@@ -143,7 +143,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
       }));
 
       // Lambda to submit job
-      const submitJobLambda  = new lambda.Function(this, 'SubmitJobLambda', {
+      const submitJobLambda  = new lambda.Function(this, 'QBusinessSubmitJobLambda', {
         code: lambda.Code.fromAsset('lib/assets/lambdas/batch_lambdas'),
         handler: 'submit_batch_job.on_event',
         runtime: lambda.Runtime.PYTHON_3_12,
@@ -167,12 +167,12 @@ export class AwsBatchAnalysisConstruct extends Construct {
       jobDefinition.grantSubmitJob(submitJobRole, jobQueue);
 
       // Custom resource to invoke the lambda
-      const submitJobLambdaProvider = new cdk.custom_resources.Provider(this, 'SubmitJobLambdaProvider', {
+      const submitJobLambdaProvider = new cdk.custom_resources.Provider(this, 'QBuinessSubmitJobLambdaProvider', {
         onEventHandler: submitJobLambda,
         logRetention: cdk.aws_logs.RetentionDays.ONE_DAY,
       });
 
-      new cdk.CustomResource(this, 'SubmitJobLambdaCustomResource', {
+      new cdk.CustomResource(this, 'QBusinessSubmitJobLambdaCustomResource', {
         serviceToken: submitJobLambdaProvider.serviceToken,
       });
 

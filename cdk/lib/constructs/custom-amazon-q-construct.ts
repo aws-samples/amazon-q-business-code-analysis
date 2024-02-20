@@ -48,7 +48,7 @@ export class CustomQBusinessConstruct extends Construct {
         resources: [props.amazon_q_app_role_arn],
       }));
   
-      const onEvent = new cdk.aws_lambda.Function(this, 'QBusinessCustomResourceFunction', {
+      const onEvent = new cdk.aws_lambda.Function(this, 'QBusinessCreateDeleteAppFunction', {
         runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
         handler: 'amazon_q_app_resource.on_event',
         code: cdk.aws_lambda.Code.fromAsset("lib/assets/lambdas/amazon_q_app"),
@@ -62,12 +62,12 @@ export class CustomQBusinessConstruct extends Construct {
         role: qBusinessCustomResourceRole
       });
 
-      const qBusinessCustomResourceProvider = new cdk.custom_resources.Provider(this, 'QBusinessCustomResourceProvider', {
+      const qBusinessCustomResourceProvider = new cdk.custom_resources.Provider(this, 'QBusinessHandleAppChanges', {
         onEventHandler: onEvent,
         logRetention: cdk.aws_logs.RetentionDays.ONE_DAY
       });
   
-      const customResource = new cdk.CustomResource(this, 'QBusinessCustomResource', {
+      const customResource = new cdk.CustomResource(this, 'QBusinessAppCfnHook', {
         serviceToken: qBusinessCustomResourceProvider.serviceToken
       });
       

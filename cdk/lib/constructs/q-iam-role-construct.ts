@@ -15,7 +15,7 @@ export class QIamRoleConstruct extends Construct {
 
     props = { ...defaultProps, ...props };
 
-    const role = new cdk.aws_iam.Role(this, "Role", {
+    const role = new cdk.aws_iam.Role(this, "QIamRole", {
       roleName: props.roleName,
       assumedBy: new cdk.aws_iam.ServicePrincipal("qbusiness.amazonaws.com"),
       inlinePolicies: {
