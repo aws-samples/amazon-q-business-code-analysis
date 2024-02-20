@@ -8,7 +8,7 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 
 ## Prerequisites
 [Configure your AWS Credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)
-[CDK bootstrap](https://docs.aws.amazon.com/cdk/latest/guide/bootstrapping.html) run `npm i cdk && npx cdk bootstrap`
+[CDK bootstrap](https://docs.aws.amazon.com/cdk/latest/guide/bootstrapping.html) run `npm i -g cdk && npx cdk bootstrap`
 
 
 ## Install dependencies 
@@ -20,7 +20,7 @@ npm install
 ```
 
 ## Deploying the stack
-To deploy the stack, run the following command. Replace the `RepositoryUrl`, `ProjectName` and `QAppUserId` (at the time of writing userId can be anything) parameters with the values you want to use.:
+To deploy the stack, run the following command. Replace the `RepositoryUrl`, `ProjectName` and `QAppUserId` (at the time of writing userId can be anything) parameters with the values you want to use:
 
 ```bash
 npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters QAppUserId=<user_id> --parameters ProjectName=<project_name> --require-approval never

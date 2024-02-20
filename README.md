@@ -11,7 +11,7 @@ This allows one to understand their code base and generate detailed next steps t
 
 ## Deploy the solution using CDK
 
-### Install dependencies 
+### Clone and Install dependencies 
 
 Write the following commands in the terminal to get started with the project.
 
@@ -19,10 +19,20 @@ Write the following commands in the terminal to get started with the project.
 git clone https://github.com/aws-samples/amazon-q-business-code-analysis.git
 cd amazon-q-business-code-analysis/cdk
 npm install
+```
+
+### Deploy the stack
+You can deploy the stack using the following command. Add the following parameters to the command:
+
+1.	ProjectName: The project name you want to use, i.e. Langchain-Agents.
+2.	QAppUserId: Choose the user you want to use for the Amazon Q for Business application (at the time of writing userId can be anything, i.e. example@example.com)
+3.	RepositoryUrl: The git URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
+
+```bash
 npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters QAppUserId=<user_id> --parameters ProjectName=<project_name> --require-approval never
 ```
 
-Example:
+Here is an example of how to deploy the stack with parameters.
 
 ```bash
 npx cdk deploy --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters QAppUserId=email@example.com --parameters ProjectName=Langchain-Agents --require-approval never
