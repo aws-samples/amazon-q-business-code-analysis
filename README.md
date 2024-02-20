@@ -25,7 +25,7 @@ npm install
 You can deploy the stack using the following command. Add the following parameters to the command:
 
 1.	ProjectName: The project name you want to use, i.e. Langchain-Agents.
-2.	QAppUserId: Choose the user you want to use for the Amazon Q for Business application (at the time of writing userId can be anything, i.e. example@example.com)
+2.	QAppUserId: The user you want to use to interact with the Amazon Q for Business application (at the time of writing userId can be anything, i.e. example@example.com).
 3.	RepositoryUrl: The git URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
 
 ```bash
