@@ -6,7 +6,7 @@ This solution uses Amazon Q for Business to analyze code through pre-processing.
 This allows one to understand their code base and generate detailed next steps to improve the codebase or to add new features. This also integrates nicely with Plugins for Amazon Q like JIRA, allowing us to rapidly find opportunities for improvement and immediately create tickets for them.
 
 ## Pre-requisites
-[CDK bootstrap](https://docs.aws.amazon.com/cdk/latest/guide/bootstrapping.html) `npm i cdk && npx cdk bootstrap`
+[CDK bootstrap](https://docs.aws.amazon.com/cdk/latest/guide/bootstrapping.html) `npm i -g cdk && cdk bootstrap`
 
 ## Deploy the solution using Cloudformation
 
