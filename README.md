@@ -5,9 +5,33 @@ This solution uses Amazon Q for Business to analyze code through pre-processing.
 
 This allows one to understand their code base and generate detailed next steps to improve the codebase or to add new features. This also integrates nicely with Plugins for Amazon Q like JIRA, allowing us to rapidly find opportunities for improvement and immediately create tickets for them.
 
-## Pre-requisites
-[Configure your AWS Credentials](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)
-[CDK bootstrap](https://docs.aws.amazon.com/cdk/latest/guide/bootstrapping.html) run `npm i -g cdk && npx cdk bootstrap`
+## Deploy the solution
+
+### Pre-requisites
+You need to have an AWS account and an IAM Role/User with permissions to create and manage the necessary resources and components for this application. (If you do not have an AWS account, please see [How do I create and activate a new Amazon Web Services account?](https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/))
+
+## Deploy the solution using Cloudformation
+
+### 1. Deploy the stack
+
+We've made this easy by providing pre-built AWS CloudFormation templates that deploy everything you need in your AWS account.
+
+1. Log into the [AWS console](https://console.aws.amazon.com/) if you are not already.
+2. Choose one of the **Launch Stack** buttons below for your desired AWS region to open the AWS CloudFormation console and create a new stack.
+3. Enter the following parameters:
+    1. `Stack Name`: Name your App, e.g. LANGCHAIN-AGENTS-ANALYSIS.
+    2. `ProjectName`: The project name you want to use, i.e. Langchain-Agents.
+    3. `QAppUserId`: Choose the user you want to use for the Amazon Q for Business application (at the time of writing userId can be anything, i.e. example@example.com)
+    4. `GitRepositoryUrl`: The URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
+
+Region | Easy Deploy Button | Template URL - use to upgrade existing stack to a new release
+--- | --- | ---
+N. Virginia (us-east-1) | [![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://us-east-1-amazon-q-business-code-analysis.s3.amazonaws.com/cloudformation.yml) | https://us-east-1-amazon-q-business-code-analysis.s3.amazonaws.com/cloudformation.yml
+
+### 2. Access the Amazon Q for Business application
+1. Navigate to the [Amazon Q for Business application](https://us-east-1.console.aws.amazon.com/amazonq/home?region=us-east-1#applications).
+2. Click on the application you just created.
+3. Click on the live web experience and start using the chat interface.
 
 ## Deploy the solution using CDK
 
@@ -28,7 +52,11 @@ You can deploy the stack using the following command. Add the following paramete
 2.	QAppUserId: The user you want to use to interact with the Amazon Q for Business application (at the time of writing userId can be anything, i.e. example@example.com).
 3.	RepositoryUrl: The git URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
 
+Note, you only need to bootstrap once. If you have already bootstrapped your account, you can skip the bootstrap command.
+
 ```bash
+npx cdk bootstrap --parameters RepositoryUrl=<repository_git_url> --parameters QAppUserId=<user_id> --parameters ProjectName=<project_name> --require-approval never
+
 npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters QAppUserId=<user_id> --parameters ProjectName=<project_name> --require-approval never
 ```
 
