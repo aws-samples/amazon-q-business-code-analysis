@@ -10,8 +10,6 @@ This allows one to understand their code base and generate detailed next steps t
 ### Pre-requisites
 You need to have an AWS account and an IAM Role/User with permissions to create and manage the necessary resources and components for this application. (If you do not have an AWS account, please see [How do I create and activate a new Amazon Web Services account?](https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/))
 
-## Deploy the solution using Cloudformation
-
 ### 1. Deploy the stack
 
 We've made this easy by providing pre-built AWS CloudFormation templates that deploy everything you need in your AWS account.
@@ -45,7 +43,7 @@ cd amazon-q-business-code-analysis/cdk
 npm install
 ```
 
-### Deploy the stack
+### Deploy the stack using CDK
 You can deploy the stack using the following command. Add the following parameters to the command:
 
 1.	ProjectName: The project name you want to use, i.e. Langchain-Agents.
