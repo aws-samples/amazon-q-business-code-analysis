@@ -939,6 +939,10 @@ Resources:
       PolicyDocument:
         Statement:
           - Action:
+              - s3:GetObject
+            Effect: Allow
+            Resource: "arn:aws:s3:::us-east-1-amazon-q-business-code-analysis/code-processing/generate_documentation_and_ingest_code.py"
+          - Action:
               - qbusiness:BatchPutDocument
               - qbusiness:ChatSync
             Effect: Allow
