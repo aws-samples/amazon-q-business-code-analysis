@@ -130,11 +130,17 @@ def process_repository(repo_url, ssh_url=None):
             for attempt in range(3):
                 try:
                     print(f"\033[92mProcessing file: {file_path}\033[0m")
-                    # prompt = "Generate comprehensive documentation about the attached file. Make sure you include what dependencies and other files are being referenced as well as function names, class names, and what they do."
                     prompt = "Come up with a list of questions and answers about the attached file. Keep answers dense with information. A good question for a database related file would be 'What is the database technology and architecture?' or for a file that executes SQL commands 'What are the SQL commands and what do they do?' or for a file that contains a list of API endpoints 'What are the API endpoints and what do they do?'"
-                    answer = ask_question_with_attachment(prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer)
-                    save_answers(answer, file_path, "documentation/")
+                    answer1 = ask_question_with_attachment(prompt, file_path)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer1)
+                    # Upload generated documentation as well
+                    prompt = "Generate comprehensive documentation about the attached file. Make sure you include what dependencies and other files are being referenced as well as function names, class names, and what they do."
+                    answer2 = ask_question_with_attachment(prompt, file_path)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer2)
+                    # Upload the file itself to the index
+                    code = open(file_path, 'r')
+                    upload_prompt_answer_and_file_name(file_path, "", code.read())
+                    save_answers(answer1+answer2, file_path, "documentation/")
                     processed_files.append(file)
                     break
                 except Exception as e:
