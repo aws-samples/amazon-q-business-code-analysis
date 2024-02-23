@@ -33,6 +33,7 @@ def ask_question_with_attachment(prompt, filename):
 import uuid
 
 def upload_prompt_answer_and_file_name(filename, prompt, answer):
+    cleaned_file_name = f"{repo_url[-4]}/{''.join(filename.split('/')[1:])}"
     amazon_q.batch_put_document(
         applicationId=amazon_q_app_id,
         indexId=index_id,
@@ -41,15 +42,15 @@ def upload_prompt_answer_and_file_name(filename, prompt, answer):
             {
                 'id': str(uuid.uuid4()),
                 'contentType': 'PLAIN_TEXT',
-                'title': filename,
+                'title': cleaned_file_name,
                 'content':{
-                    'blob': f"{filename} | {prompt} | {answer}".encode('utf-8')
+                    'blob': f"{cleaned_file_name} | {prompt} | {answer}".encode('utf-8')
                 },
                 'attributes': [
                     {
                         'name': 'url',
                         'value': {
-                            'stringValue': f"{repo_url[:-4]}/{filename}"
+                            'stringValue': cleaned_file_name
                         }
                     }
                 ]
@@ -137,10 +138,16 @@ def process_repository(repo_url, ssh_url=None):
                     prompt = "Generate comprehensive documentation about the attached file. Make sure you include what dependencies and other files are being referenced as well as function names, class names, and what they do."
                     answer2 = ask_question_with_attachment(prompt, file_path)
                     upload_prompt_answer_and_file_name(file_path, prompt, answer2)
+                    # Identify anti-patterns
+                    prompt = "Identify anti-patterns in the attached file. Make sure to include examples of how to fix them. Try Q&A like 'What are some anti-patterns in the file?' or 'What could be causing high latency?'"
+                    answer3 = ask_question_with_attachment(prompt, file_path)
+                    # Suggest improvements
+                    prompt = "Suggest improvements to the attached file. Try Q&A like 'What are some ways to improve the file?' or 'Where can the file be optimized?'"
+                    answer4 = ask_question_with_attachment(prompt, file_path)
                     # Upload the file itself to the index
                     code = open(file_path, 'r')
                     upload_prompt_answer_and_file_name(file_path, "", code.read())
-                    save_answers(answer1+answer2, file_path, "documentation/")
+                    save_answers(answer1+answer2+answer3+answer4, file_path, "documentation/")
                     processed_files.append(file)
                     break
                 except Exception as e:
