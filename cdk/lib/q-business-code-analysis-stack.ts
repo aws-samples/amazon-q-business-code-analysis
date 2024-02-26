@@ -15,7 +15,7 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
     super(scope, id, props);
 
     // Cloudformation Description
-    this.templateOptions.description = '(uksb-1tupboc54) - Amazon Q Business Code Analysis stack';
+    this.templateOptions.description = '(uksb-1tupboc55) - Amazon Q Business Code Analysis stack';
 
     const qAppRoleName = 'QBusiness-Application-' + props?.randomPrefix;
 
