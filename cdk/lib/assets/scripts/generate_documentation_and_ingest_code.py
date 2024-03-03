@@ -141,9 +141,11 @@ def process_repository(repo_url, ssh_url=None):
                     # Identify anti-patterns
                     prompt = "Identify anti-patterns in the attached file. Make sure to include examples of how to fix them. Try Q&A like 'What are some anti-patterns in the file?' or 'What could be causing high latency?'"
                     answer3 = ask_question_with_attachment(prompt, file_path)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer3)
                     # Suggest improvements
                     prompt = "Suggest improvements to the attached file. Try Q&A like 'What are some ways to improve the file?' or 'Where can the file be optimized?'"
                     answer4 = ask_question_with_attachment(prompt, file_path)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer4)
                     # Upload the file itself to the index
                     code = open(file_path, 'r')
                     upload_prompt_answer_and_file_name(file_path, "", code.read())
