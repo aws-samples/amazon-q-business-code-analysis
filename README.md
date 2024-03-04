@@ -21,6 +21,8 @@ We've made this easy by providing pre-built AWS CloudFormation templates that de
     2. `ProjectName`: The project name you want to use, i.e. Langchain-Agents.
     3. `QAppUserId`: Choose the user you want to use for the Amazon Q for Business application (at the time of writing userId can be anything, i.e. example@example.com)
     4. `GitRepositoryUrl`: The URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
+    5. `SshSecretName`: (Optional) The name of the secret in Secrets Manager that contains the SSH key for the repository. If none just leave this as the default 'None.'
+    6. `SshUrl`: (Optional) The SSH URL of the repository you want to analyze, i.e. git@github.com:aws-samples/langchain-agents.git. If none just leave this as the default 'None.'
 
 Region | Easy Deploy Button | Template URL - use to upgrade existing stack to a new release
 --- | --- | ---

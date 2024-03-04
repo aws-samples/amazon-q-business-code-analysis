@@ -177,7 +177,7 @@ def process_repository(repo_url, ssh_url=None):
                     # Upload the file itself to the index
                     code = open(file_path, 'r')
                     upload_prompt_answer_and_file_name(file_path, "", code.read(), repo_url)
-                    save_answers(answer1+answer2+answer3+answer4, file_path, "documentation/", repo_url)
+                    save_answers(answer1+answer2+answer3+answer4, file_path, "documentation/")
                     processed_files.append(file)
                     break
                 except Exception as e:

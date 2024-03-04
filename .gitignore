@@ -5,3 +5,4 @@ cdk/node_modules
 cdk/cdk.out
 cdk/cloudformation
 .DS_Store
+.*
