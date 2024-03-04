@@ -86,6 +86,10 @@ def should_ignore_path(path):
     for component in path_components:
         if component.startswith('.'):
             return True
+        elif component == 'node_modules':
+            return True
+        elif component == '__pycache__':
+            return True
     return False
 
 def get_ssh_key(secret_name):
@@ -144,7 +148,7 @@ def process_repository(repo_url, ssh_url=None):
         if should_ignore_path(root):
             continue
         for file in files:
-            if file.endswith(('.png', '.jpg', '.jpeg', '.gif', '.zip')):
+            if file.endswith(('.png', '.jpg', '.jpeg', '.gif', '.zip', '.pyc')):
                 continue
             # Ignore files that start with a dot (.)
             if file.startswith('.'):
@@ -172,7 +176,7 @@ def process_repository(repo_url, ssh_url=None):
                     upload_prompt_answer_and_file_name(file_path, prompt, answer4, repo_url)
                     # Upload the file itself to the index
                     code = open(file_path, 'r')
-                    upload_prompt_answer_and_file_name(file_path, "", code.read())
+                    upload_prompt_answer_and_file_name(file_path, "", code.read(), repo_url)
                     save_answers(answer1+answer2+answer3+answer4, file_path, "documentation/", repo_url)
                     processed_files.append(file)
                     break
