@@ -4,6 +4,7 @@ import * as batch from "aws-cdk-lib/aws-batch";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import { assert } from "console";
 
 export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly qAppName: string;
@@ -11,6 +12,8 @@ export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly repository: string;
   readonly boto3Layer: lambda.LayerVersion;
   readonly qAppUserId: string;
+  readonly sshUrl: string;
+  readonly sshKeyName: string;
 }
 
 const defaultProps: Partial<AwsBatchAnalysisProps> = {};
@@ -108,6 +111,16 @@ export class AwsBatchAnalysisConstruct extends Construct {
         }),
       });
 
+      // Grant Job Execution Role to read from Secrets manager if ssh key is provided
+      jobExecutionRole.addToPolicy(new cdk.aws_iam.PolicyStatement({
+        actions: [
+          "secretsmanager:GetSecretValue",
+        ],
+        resources: [
+          `arn:aws:secretsmanager:${cdk.Stack.of(this).region}:${awsAccountId}:secret:${props.sshKeyName}-??????`
+        ],
+      }));
+
       // Role to submit job
       const submitJobRole = new cdk.aws_iam.Role(this, 'QBusinessSubmitJobRole', {
         assumedBy: new cdk.aws_iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -155,6 +168,8 @@ export class AwsBatchAnalysisConstruct extends Construct {
           Q_APP_ROLE_ARN: props.qAppRoleArn,
           S3_BUCKET: s3Bucket.bucketName,
           Q_APP_USER_ID: props.qAppUserId,
+          SSH_URL: props.sshUrl,
+          SSH_KEY_NAME: props.sshKeyName,
         },
         layers: [props.boto3Layer],
         role: submitJobRole,
@@ -174,6 +189,16 @@ export class AwsBatchAnalysisConstruct extends Construct {
 
       new cdk.CustomResource(this, 'QBusinessSubmitJobLambdaCustomResource', {
         serviceToken: submitJobLambdaProvider.serviceToken,
+      });
+
+      // Output Job Queue
+      new cdk.CfnOutput(this, 'JobQueue', {
+        value: jobQueue.jobQueueArn,
+      });
+
+      // Output Job Execution Role
+      new cdk.CfnOutput(this, 'JobExecutionRole', {
+        value: jobExecutionRole.roleArn,
       });
 
     }

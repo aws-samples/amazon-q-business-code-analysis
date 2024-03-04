@@ -5,19 +5,14 @@ import { QIamRoleConstruct } from './constructs/q-iam-role-construct';
 import { AwsBatchAnalysisConstruct } from './constructs/aws-batch-analysis-construct';
 
 
-
-export interface QBusinessCodeAnalysisProps extends cdk.StackProps {
-  readonly randomPrefix: number;
-}
-
 export class QBusinessCodeAnalysisStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: QBusinessCodeAnalysisProps) {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // Cloudformation Description
     this.templateOptions.description = '(uksb-1tupboc55) - Amazon Q Business Code Analysis stack';
 
-    const qAppRoleName = 'QBusiness-Application-' + props?.randomPrefix;
+    const qAppRoleName = 'QBusiness-Application-Code-Analysis';
 
     // Input Project name that satisfies regular expression pattern: [a-zA-Z0-9][a-zA-Z0-9_-]*
     const projectNameParam = new cdk.CfnParameter(this, 'ProjectName', {
@@ -26,24 +21,41 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       allowedPattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]*$'
     });
 
+    const qAppUserIdParam = new cdk.CfnParameter(this, 'QAppUserId', {
+      type: 'String',
+      description: 'The user ID of the Amazon Q Business user. At the time of writing, any value will be accepted.',
+    });
+
     const repositoryUrlParam = new cdk.CfnParameter(this, 'RepositoryUrl', {
       type: 'String',
       description: 'The Git URL of the repository to scan and ingest into Amazon Q Business. Note it should end with .git, i.e. https://github.com/aws-samples/langchain-agents.git',
       allowedPattern: '^https?://.+(\.git)$'
     });
-    const qAppUserIdParam = new cdk.CfnParameter(this, 'QAppUserId', {
+
+    // Optional SSH URL Param
+    const sshUrlParam = new cdk.CfnParameter(this, 'SshUrl', {
       type: 'String',
-      description: 'The user ID of the Amazon Q Business user. At the time of writing, any value will be accepted.',
+      description: 'Optional. The SSH URL of the repository to scan and ingest into Amazon Q Business. Note it should end with .git, i.e. git@github.com:aws-samples/langchain-agents.git',
+      default: 'None'
+    });
+
+    // Optional SSH Key Param Name
+    const sshKeyNameParam = new cdk.CfnParameter(this, 'SshSecretName', {
+      type: 'String',
+      description: 'Optional. The name of the SSH key to use to access the repository. It should be the name of the SSH key stored in the AWS Systems Manager Parameter Store.',
+      default: 'None'
     });
 
     // Check if the repository url is provided
     const repositoryUrl = repositoryUrlParam.valueAsString;
     const qAppUserId = qAppUserIdParam.valueAsString;
     const projectName = projectNameParam.valueAsString;
+    const sshUrl = sshUrlParam.valueAsString;
+    const sshKeyName = sshKeyNameParam.valueAsString;
 
-    const qAppName = projectNameParam.valueAsString + '-' + props?.randomPrefix;
+    const qAppName = projectName;
 
-    const QIamRole = new QIamRoleConstruct(this, `QIamConstruct-${props?.randomPrefix}`, { 
+    const QIamRole = new QIamRoleConstruct(this, `QIamConstruct`, { 
       roleName: qAppRoleName 
     });
 
@@ -74,6 +86,8 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       repository: repositoryUrl,
       boto3Layer: layer,
       qAppUserId: qAppUserId,
+      sshUrl: sshUrl,
+      sshKeyName: sshKeyName
     });
  
     awsBatchConstruct.node.addDependency(qBusinessConstruct);

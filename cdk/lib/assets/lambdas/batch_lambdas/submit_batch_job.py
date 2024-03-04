@@ -32,6 +32,8 @@ def on_create(event, physical_id):
     s3_bucket = os.environ.get("S3_BUCKET")
     q_app_name = os.environ.get("Q_APP_NAME")
     q_app_user_id = os.environ.get("Q_APP_USER_ID")
+    ssh_url = os.environ.get("SSH_URL")
+    ssh_key_name = os.environ.get("SSH_KEY_NAME")
     print("Getting AP id and index...")
     q_app_id = get_q_app_id(q_app_name)
     q_app_index = get_q_app_index(q_app_name, q_app_id)
@@ -40,6 +42,14 @@ def on_create(event, physical_id):
         "environment": [{
             "name": "REPO_URL",
             "value": repo_url
+        },
+        {
+            "name": "SSH_URL",
+            "value": ssh_url
+        },
+        {
+            "name": "SSH_KEY_NAME",
+            "value": ssh_key_name
         },
         {
             "name": "AMAZON_Q_APP_ID",

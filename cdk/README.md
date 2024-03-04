@@ -32,6 +32,13 @@ For example:
 npx cdk deploy --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters QAppUserId=email@example.com --parameters ProjectName=Langchain-Agents --require-approval never
 ```
 
+## Accessing Private repositories
+To access a private repository you will need to generate an SSH key and upload the private key to Secrets Manager and the public key to your git provider. Then just pass the ssh url and ssh secret name as parameters. Currently supported with cdk deployments, i.e.  For Github you can generate an SSH key by following the instructions [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).
+
+```bash
+npx cdk deploy --parameters ProjectName=Langchain-Agents --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters QAppUserId=example@example.com --parameters ProjectName=Langchain-Agents --parameters SshUrl=git@github.com:aws-samples/langchain-agents.git --parameters SshSecretName=<your_ssh_secret_name> --require-approval never 
+```
+
 ## Destroying the stack
 To destroy the stack, run the following command:
 

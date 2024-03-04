@@ -2,6 +2,9 @@ import boto3
 import json
 import datetime
 import os 
+import git
+import shutil
+import tempfile
 
 amazon_q = boto3.client('qbusiness')
 amazon_q_app_id = os.environ['AMAZON_Q_APP_ID']
@@ -9,10 +12,17 @@ amazon_q_user_id = os.environ['AMAZON_Q_USER_ID']
 index_id = os.environ['Q_APP_INDEX']
 role_arn = os.environ['Q_APP_ROLE_ARN']
 repo_url = os.environ['REPO_URL']
+# Optional retrieve the SSH URL and SSH_KEY_NAME for the repository
+ssh_url = os.environ.get('SSH_URL')
+ssh_key_name = os.environ.get('SSH_KEY_NAME')
 
 def main():
     print(f"Processing repository... {repo_url}")
-    process_repository(repo_url)
+    # If ssh_url ends with .git then process it
+    if ssh_url and ssh_url.endswith('.git'):
+        process_repository(repo_url, ssh_url)
+    else:
+        process_repository(repo_url)
     print(f"Finished processing repository {repo_url}")
 
 def ask_question_with_attachment(prompt, filename):
@@ -32,8 +42,8 @@ def ask_question_with_attachment(prompt, filename):
 
 import uuid
 
-def upload_prompt_answer_and_file_name(filename, prompt, answer):
-    cleaned_file_name = f"{repo_url[-4]}/{''.join(filename.split('/')[1:])}"
+def upload_prompt_answer_and_file_name(filename, prompt, answer, repo_url):
+    cleaned_file_name = os.path.join(repo_url[:-4], '/'.join(filename.split('/')[1:]))
     amazon_q.batch_put_document(
         applicationId=amazon_q_app_id,
         indexId=index_id,
@@ -78,8 +88,16 @@ def should_ignore_path(path):
             return True
     return False
 
-import git
-import shutil
+def get_ssh_key(secret_name):
+    client = boto3.client('secretsmanager')
+    response = client.get_secret_value(SecretId=secret_name)
+    return response['SecretString']
+
+def write_ssh_key_to_tempfile(ssh_key):
+    with tempfile.NamedTemporaryFile(delete=False) as f:
+        os.chmod(f.name, 0o600)
+        f.write(ssh_key.strip().encode() + b'\n')  # Add a newline character at the end
+        return f.name
 
 def process_repository(repo_url, ssh_url=None):
 
@@ -88,11 +106,17 @@ def process_repository(repo_url, ssh_url=None):
 
     destination_folder = 'repositories/'
 
+    if not os.path.exists(destination_folder):
+        os.makedirs(destination_folder)
+
     # Clone the repository
     # If you authenticate with some other repo provider just change the line below
     print(f"Cloning repository... {repo_url}")
     if ssh_url:
-        repo = git.Repo.clone_from(ssh_url, tmp_dir)
+        ssh_key = get_ssh_key(ssh_key_name)
+        ssh_key_file = write_ssh_key_to_tempfile(ssh_key)
+        ssh_command = f"ssh -i {ssh_key_file} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+        repo = git.Repo.clone_from(ssh_url, tmp_dir, env={"GIT_SSH_COMMAND": ssh_command})
     else:
         repo = git.Repo.clone_from(repo_url, tmp_dir)
     print(f"Finished cloning repository {repo_url}")
@@ -133,23 +157,23 @@ def process_repository(repo_url, ssh_url=None):
                     print(f"\033[92mProcessing file: {file_path}\033[0m")
                     prompt = "Come up with a list of questions and answers about the attached file. Keep answers dense with information. A good question for a database related file would be 'What is the database technology and architecture?' or for a file that executes SQL commands 'What are the SQL commands and what do they do?' or for a file that contains a list of API endpoints 'What are the API endpoints and what do they do?'"
                     answer1 = ask_question_with_attachment(prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer1)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer1, repo_url)
                     # Upload generated documentation as well
                     prompt = "Generate comprehensive documentation about the attached file. Make sure you include what dependencies and other files are being referenced as well as function names, class names, and what they do."
                     answer2 = ask_question_with_attachment(prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer2)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer2, repo_url)
                     # Identify anti-patterns
                     prompt = "Identify anti-patterns in the attached file. Make sure to include examples of how to fix them. Try Q&A like 'What are some anti-patterns in the file?' or 'What could be causing high latency?'"
                     answer3 = ask_question_with_attachment(prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer3)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer3, repo_url)
                     # Suggest improvements
                     prompt = "Suggest improvements to the attached file. Try Q&A like 'What are some ways to improve the file?' or 'Where can the file be optimized?'"
                     answer4 = ask_question_with_attachment(prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer4)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer4, repo_url)
                     # Upload the file itself to the index
                     code = open(file_path, 'r')
                     upload_prompt_answer_and_file_name(file_path, "", code.read())
-                    save_answers(answer1+answer2+answer3+answer4, file_path, "documentation/")
+                    save_answers(answer1+answer2+answer3+answer4, file_path, "documentation/", repo_url)
                     processed_files.append(file)
                     break
                 except Exception as e:

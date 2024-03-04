@@ -5,9 +5,5 @@ import { QBusinessCodeAnalysisStack } from '../lib/q-business-code-analysis-stac
 
 const app = new cdk.App();
 
-// Generate random number to avoid roles and lambda duplicates
-const randomPrefix = Math.floor(Math.random() * (10000 - 100) + 100);
-
 new QBusinessCodeAnalysisStack(app, 'QBusinessCodeAnalysisCdkStack', {
-  randomPrefix: randomPrefix,
 });
