@@ -4,10 +4,11 @@ import * as batch from "aws-cdk-lib/aws-batch";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import { assert } from "console";
 
 export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly qAppName: string;
+  readonly qAppId: string;
+  readonly qAppIndexId: string
   readonly qAppRoleArn: string;
   readonly repository: string;
   readonly boto3Layer: lambda.LayerVersion;
@@ -165,6 +166,8 @@ export class AwsBatchAnalysisConstruct extends Construct {
           BATCH_JOB_QUEUE: jobQueue.jobQueueArn,
           REPO_URL: props.repository,
           Q_APP_NAME: props.qAppName,
+          AMAZON_Q_APP_ID: props.qAppId,
+          Q_APP_INDEX: props.qAppIndexId,
           Q_APP_ROLE_ARN: props.qAppRoleArn,
           S3_BUCKET: s3Bucket.bucketName,
           Q_APP_USER_ID: props.qAppUserId,
@@ -176,7 +179,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
         timeout: cdk.Duration.minutes(5),
         memorySize: 512,
       });
-      
+
       submitJobLambda.node.addDependency(jobDefinition);
 
       jobDefinition.grantSubmitJob(submitJobRole, jobQueue);
