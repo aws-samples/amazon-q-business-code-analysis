@@ -5,7 +5,9 @@ import os
 import git
 import shutil
 import tempfile
+import uuid
 
+bedrock = boto3.client('bedrock-runtime')
 amazon_q = boto3.client('qbusiness')
 amazon_q_app_id = os.environ['AMAZON_Q_APP_ID']
 amazon_q_user_id = os.environ['AMAZON_Q_USER_ID']
@@ -25,22 +27,35 @@ def main():
         process_repository(repo_url)
     print(f"Finished processing repository {repo_url}")
 
-def ask_question_with_attachment(prompt, filename):
-    data=open(filename, 'rb')
-    answer = amazon_q.chat_sync(
-        applicationId=amazon_q_app_id,
-        userId=amazon_q_user_id,
-        userMessage=prompt,
-        attachments=[
-            {
-                'data': data.read(),
-                'name': filename
-            },
-        ],
-    )
-    return answer['systemMessage']
+def format_prompt(prompt, code_text):
+     formatted_prompt = f"""
+     {prompt}
+     File content: {code_text}
+     """
+     
+     return formatted_prompt    
 
-import uuid
+def ask_question_with_attachment(prompt):
+     model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
+     response = bedrock.invoke_model(
+         modelId=model_id,
+         body=json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                 "max_tokens": 1024,
+                 "messages": [
+                     {
+                         "role": "user",
+                         "content": [{"type": "text", "text": prompt}],
+                  }
+               ],
+             }
+        ),
+     )
+     result = json.loads(response.get("body").read())
+
+     return result.get("content", [])
+
 
 def upload_prompt_answer_and_file_name(filename, prompt, answer, repo_url):
     cleaned_file_name = os.path.join(repo_url[:-4], '/'.join(filename.split('/')[1:]))
@@ -159,20 +174,28 @@ def process_repository(repo_url, ssh_url=None):
             for attempt in range(3):
                 try:
                     print(f"\033[92mProcessing file: {file_path}\033[0m")
+                    # Turn code file into text
+                    code = open(file_path, 'r')
+                    code_text = code.read()
+                    code.close()
                     prompt = "Come up with a list of questions and answers about the attached file. Keep answers dense with information. A good question for a database related file would be 'What is the database technology and architecture?' or for a file that executes SQL commands 'What are the SQL commands and what do they do?' or for a file that contains a list of API endpoints 'What are the API endpoints and what do they do?'"
-                    answer1 = ask_question_with_attachment(prompt, file_path)
+                    formatted_prompt = format_prompt(prompt, code_text)
+                    answer1 = ask_question_with_attachment(formatted_prompt, file_path)
                     upload_prompt_answer_and_file_name(file_path, prompt, answer1, repo_url)
                     # Upload generated documentation as well
                     prompt = "Generate comprehensive documentation about the attached file. Make sure you include what dependencies and other files are being referenced as well as function names, class names, and what they do."
-                    answer2 = ask_question_with_attachment(prompt, file_path)
+                    formatted_prompt = format_prompt(prompt, code_text)
+                    answer2 = ask_question_with_attachment(formatted_prompt, file_path)
                     upload_prompt_answer_and_file_name(file_path, prompt, answer2, repo_url)
                     # Identify anti-patterns
                     prompt = "Identify anti-patterns in the attached file. Make sure to include examples of how to fix them. Try Q&A like 'What are some anti-patterns in the file?' or 'What could be causing high latency?'"
-                    answer3 = ask_question_with_attachment(prompt, file_path)
+                    formatted_prompt = format_prompt(prompt, code_text)
+                    answer3 = ask_question_with_attachment(formatted_prompt, file_path)
                     upload_prompt_answer_and_file_name(file_path, prompt, answer3, repo_url)
                     # Suggest improvements
                     prompt = "Suggest improvements to the attached file. Try Q&A like 'What are some ways to improve the file?' or 'Where can the file be optimized?'"
-                    answer4 = ask_question_with_attachment(prompt, file_path)
+                    formatted_prompt = format_prompt(prompt, code_text)
+                    answer4 = ask_question_with_attachment(formatted_prompt, file_path)
                     upload_prompt_answer_and_file_name(file_path, prompt, answer4, repo_url)
                     # Upload the file itself to the index
                     code = open(file_path, 'r')
