@@ -35,7 +35,7 @@ def format_prompt(prompt, code_text):
      
      return formatted_prompt    
 
-def ask_question_with_attachment(prompt):
+def ask_question_with_attachment(prompt, file_path):
      model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
      response = bedrock.invoke_model(
          modelId=model_id,
@@ -46,7 +46,7 @@ def ask_question_with_attachment(prompt):
                  "messages": [
                      {
                          "role": "user",
-                         "content": [{"type": "text", "text": prompt}],
+                         "content": [{"type": "text", "text": f"File path: {file_path}\n" + prompt}],
                   }
                ],
              }
