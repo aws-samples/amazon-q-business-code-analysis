@@ -12,7 +12,6 @@ export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly qAppRoleArn: string;
   readonly repository: string;
   readonly boto3Layer: lambda.LayerVersion;
-  readonly qAppUserId: string;
   readonly sshUrl: string;
   readonly sshKeyName: string;
 }
@@ -107,6 +106,16 @@ export class AwsBatchAnalysisConstruct extends Construct {
         resources: [props.qAppRoleArn],
       }));
 
+      // Add Invoke model permission to the role
+      jobExecutionRole.addToPolicy(new cdk.aws_iam.PolicyStatement({
+        actions: [
+          "bedrock:InvokeModel",
+        ],
+        resources: [
+          `arn:aws:bedrock:${cdk.Stack.of(this).region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0`,
+        ],
+      }));
+
       s3Bucket.grantReadWrite(jobExecutionRole);
 
       const jobDefinition = new batch.EcsJobDefinition(this, 'QBusinessJob', {
@@ -178,7 +187,6 @@ export class AwsBatchAnalysisConstruct extends Construct {
           Q_APP_INDEX: props.qAppIndexId,
           Q_APP_ROLE_ARN: props.qAppRoleArn,
           S3_BUCKET: s3Bucket.bucketName,
-          Q_APP_USER_ID: props.qAppUserId,
           SSH_URL: props.sshUrl,
           SSH_KEY_NAME: props.sshKeyName,
         },

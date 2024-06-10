@@ -10,7 +10,6 @@ import uuid
 bedrock = boto3.client('bedrock-runtime')
 amazon_q = boto3.client('qbusiness')
 amazon_q_app_id = os.environ['AMAZON_Q_APP_ID']
-amazon_q_user_id = os.environ['AMAZON_Q_USER_ID']
 index_id = os.environ['Q_APP_INDEX']
 role_arn = os.environ['Q_APP_ROLE_ARN']
 repo_url = os.environ['REPO_URL']
@@ -35,7 +34,7 @@ def format_prompt(prompt, code_text):
      
      return formatted_prompt    
 
-def ask_question_with_attachment(prompt):
+def ask_question_with_attachment(prompt, file_path):
      model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
      response = bedrock.invoke_model(
          modelId=model_id,
@@ -46,7 +45,7 @@ def ask_question_with_attachment(prompt):
                  "messages": [
                      {
                          "role": "user",
-                         "content": [{"type": "text", "text": prompt}],
+                         "content": [{"type": "text", "text": f"File path: {file_path}\n" + prompt}],
                   }
                ],
              }
@@ -96,7 +95,7 @@ def save_answers(answer, filepath, folder):
     # Replace all file endings with .txt
     filepath = filepath[:filepath.rfind('.')] + ".txt"
     with open(f"{folder}{filepath}", "w") as f:
-        f.write(answer)
+        f.write(str(answer))
 
 def should_ignore_path(path):
     path_components = path.split(os.sep)
@@ -206,7 +205,7 @@ def process_repository(repo_url, ssh_url=None):
                     # Upload the file itself to the index
                     code = open(file_path, 'r')
                     upload_prompt_answer_and_file_name(file_path, "", code.read(), repo_url, branch)
-                    save_answers(answer1+answer2+answer3+answer4, file_path, "documentation/")
+                    # save_answers(answer1+answer2+answer3+answer4, file_path, "documentation/")
                     processed_files.append(file)
                     break
                 except Exception as e:
