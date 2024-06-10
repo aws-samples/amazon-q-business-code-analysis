@@ -21,11 +21,6 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       allowedPattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]*$'
     });
 
-    const qAppUserIdParam = new cdk.CfnParameter(this, 'QAppUserId', {
-      type: 'String',
-      description: 'The user ID of the Amazon Q Business user. At the time of writing, any value will be accepted.',
-    });
-
     const repositoryUrlParam = new cdk.CfnParameter(this, 'RepositoryUrl', {
       type: 'String',
       description: 'The Git URL of the repository to scan and ingest into Amazon Q Business. Note it should end with .git, i.e. https://github.com/aws-samples/langchain-agents.git',
@@ -54,7 +49,6 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
 
     // Check if the repository url is provided
     const repositoryUrl = repositoryUrlParam.valueAsString;
-    const qAppUserId = qAppUserIdParam.valueAsString;
     const projectName = projectNameParam.valueAsString;
     const sshUrl = sshUrlParam.valueAsString;
     const sshKeyName = sshKeyNameParam.valueAsString;
@@ -96,7 +90,6 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       qAppIndexId: qBusinessConstruct.indexId,
       repository: repositoryUrl,
       boto3Layer: layer,
-      qAppUserId: qAppUserId,
       sshUrl: sshUrl,
       sshKeyName: sshKeyName
     });

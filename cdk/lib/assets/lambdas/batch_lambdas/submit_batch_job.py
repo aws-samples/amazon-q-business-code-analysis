@@ -31,7 +31,6 @@ def on_create(event, physical_id):
     q_app_role_arn = os.environ.get("Q_APP_ROLE_ARN")
     s3_bucket = os.environ.get("S3_BUCKET")
     q_app_name = os.environ.get("Q_APP_NAME")
-    q_app_user_id = os.environ.get("Q_APP_USER_ID")
     ssh_url = os.environ.get("SSH_URL")
     ssh_key_name = os.environ.get("SSH_KEY_NAME")
     q_app_id = os.environ['AMAZON_Q_APP_ID']
@@ -53,10 +52,6 @@ def on_create(event, physical_id):
         {
             "name": "AMAZON_Q_APP_ID",
             "value": q_app_id
-        },
-        {
-            "name": "AMAZON_Q_USER_ID",
-            "value": q_app_user_id
         },
         {
             "name": "Q_APP_INDEX",

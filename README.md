@@ -19,8 +19,8 @@ We've made this easy by providing pre-built AWS CloudFormation templates that de
 3. Enter the following parameters:
     1. `Stack Name`: Name your App, e.g. LANGCHAIN-AGENTS-ANALYSIS.
     2. `ProjectName`: The project name you want to use, i.e. Langchain-Agents.
-    3. `QAppUserId`: Choose the user you want to use for the Amazon Q for Business application (at the time of writing userId can be anything, i.e. example@example.com)
-    4. `GitRepositoryUrl`: The URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
+    3. `GitRepositoryUrl`: The URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
+    4. `IdcArn`: The ARN of the Identity Center you want to use to create the Amazon Q for Business application. You can find the ARN under Settings in the AWS Console under IAM Identity Center.
     5. `SshSecretName`: (Optional) The name of the secret in Secrets Manager that contains the SSH key for the repository. If none just leave this as the default 'None.'
     6. `SshUrl`: (Optional) The SSH URL of the repository you want to analyze, i.e. git@github.com:aws-samples/langchain-agents.git. If none just leave this as the default 'None.'
 
@@ -51,21 +51,21 @@ npm install
 You can deploy the stack using the following command. Add the following parameters to the command:
 
 1.	ProjectName: The project name you want to use, i.e. Langchain-Agents.
-2.	QAppUserId: The user you want to use to interact with the Amazon Q for Business application (at the time of writing userId can be anything, i.e. example@example.com).
-3.	RepositoryUrl: The git URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
+2.	RepositoryUrl: The git URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
+3. IdcArn: The ARN of the Identity Center you want to use to create the Amazon Q for Business application. You can find the ARN under Settings in the AWS Console under IAM Identity Center.
 
 Note, you only need to bootstrap once. If you have already bootstrapped your account, you can skip the bootstrap command.
 
 ```bash
-npx cdk bootstrap --parameters RepositoryUrl=<repository_git_url> --parameters QAppUserId=<user_id> --parameters ProjectName=<project_name> --require-approval never
+npx cdk bootstrap --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters <identity_center_arn> --require-approval never
 
-npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters QAppUserId=<user_id> --parameters ProjectName=<project_name> --require-approval never
+npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters  IdcArn=<identity_center_arn> --require-approval never
 ```
 
 Here is an example of how to deploy the stack with parameters.
 
 ```bash
-npx cdk deploy --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters QAppUserId=email@example.com --parameters ProjectName=Langchain-Agents --require-approval never
+npx cdk deploy --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters ProjectName=Langchain-Agents --require-approval never
 ```
 
 ### 2. Access the Amazon Q for Business application
@@ -81,7 +81,7 @@ npx cdk deploy --parameters RepositoryUrl=https://github.com/aws-samples/langcha
 To access a private repository you will need to generate an SSH key and upload the private key to Secrets Manager and the public key to your git provider. Then just pass the ssh url and ssh secret name as parameters. Currently supported with cdk deployments, i.e.  For Github you can generate an SSH key by following the instructions [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).
 
 ```bash
-npx cdk deploy --parameters ProjectName=Langchain-Agents --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters QAppUserId=example@example.com --parameters ProjectName=Langchain-Agents --parameters SshUrl=git@github.com:aws-samples/langchain-agents.git --parameters SshSecretName=<your_ssh_secret_name> --require-approval never 
+npx cdk deploy --parameters ProjectName=Langchain-Agents --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters ProjectName=Langchain-Agents --parameters SshUrl=git@github.com:aws-samples/langchain-agents.git --parameters SshSecretName=<your_ssh_secret_name> --require-approval never 
 ```
 
 ## Use the Jupyter Notebook
