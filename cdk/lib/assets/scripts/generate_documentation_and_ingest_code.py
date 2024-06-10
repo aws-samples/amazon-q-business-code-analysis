@@ -57,8 +57,10 @@ def ask_question_with_attachment(prompt):
      return result.get("content", [])
 
 
-def upload_prompt_answer_and_file_name(filename, prompt, answer, repo_url):
-    cleaned_file_name = os.path.join(repo_url[:-4], '/'.join(filename.split('/')[1:]))
+def upload_prompt_answer_and_file_name(filename, prompt, answer, repo_url, branch):
+    base_url = repo_url[:-4]
+    cleaned_file_name = f"{base_url}/blob/{branch}/{'/'.join(filename.split('/')[1:])}"
+    print(f"Cleaned File Name: {cleaned_file_name}")
     amazon_q.batch_put_document(
         applicationId=amazon_q_app_id,
         indexId=index_id,
@@ -136,8 +138,12 @@ def process_repository(repo_url, ssh_url=None):
         ssh_key_file = write_ssh_key_to_tempfile(ssh_key)
         ssh_command = f"ssh -i {ssh_key_file} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
         repo = git.Repo.clone_from(ssh_url, tmp_dir, env={"GIT_SSH_COMMAND": ssh_command})
+        branch = repo.active_branch
+        print(f"Active Branch Name: {branch}")
     else:
         repo = git.Repo.clone_from(repo_url, tmp_dir)
+        branch = repo.active_branch
+        print(f"Active Branch Name: {branch}")
     print(f"Finished cloning repository {repo_url}")
     # Copy all files to destination folder
     for src_dir, dirs, files in os.walk(tmp_dir):
@@ -180,26 +186,26 @@ def process_repository(repo_url, ssh_url=None):
                     code.close()
                     prompt = "Come up with a list of questions and answers about the attached file. Keep answers dense with information. A good question for a database related file would be 'What is the database technology and architecture?' or for a file that executes SQL commands 'What are the SQL commands and what do they do?' or for a file that contains a list of API endpoints 'What are the API endpoints and what do they do?'"
                     formatted_prompt = format_prompt(prompt, code_text)
-                    answer1 = ask_question_with_attachment(formatted_prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer1, repo_url)
+                    answer1 = ask_question_with_attachment(formatted_prompt)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer1, repo_url, branch)
                     # Upload generated documentation as well
                     prompt = "Generate comprehensive documentation about the attached file. Make sure you include what dependencies and other files are being referenced as well as function names, class names, and what they do."
                     formatted_prompt = format_prompt(prompt, code_text)
-                    answer2 = ask_question_with_attachment(formatted_prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer2, repo_url)
+                    answer2 = ask_question_with_attachment(formatted_prompt)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer2, repo_url, branch)
                     # Identify anti-patterns
                     prompt = "Identify anti-patterns in the attached file. Make sure to include examples of how to fix them. Try Q&A like 'What are some anti-patterns in the file?' or 'What could be causing high latency?'"
                     formatted_prompt = format_prompt(prompt, code_text)
-                    answer3 = ask_question_with_attachment(formatted_prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer3, repo_url)
+                    answer3 = ask_question_with_attachment(formatted_prompt)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer3, repo_url, branch)
                     # Suggest improvements
                     prompt = "Suggest improvements to the attached file. Try Q&A like 'What are some ways to improve the file?' or 'Where can the file be optimized?'"
                     formatted_prompt = format_prompt(prompt, code_text)
-                    answer4 = ask_question_with_attachment(formatted_prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer4, repo_url)
+                    answer4 = ask_question_with_attachment(formatted_prompt)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer4, repo_url, branch)
                     # Upload the file itself to the index
                     code = open(file_path, 'r')
-                    upload_prompt_answer_and_file_name(file_path, "", code.read(), repo_url)
+                    upload_prompt_answer_and_file_name(file_path, "", code.read(), repo_url, branch)
                     save_answers(answer1+answer2+answer3+answer4, file_path, "documentation/")
                     processed_files.append(file)
                     break
