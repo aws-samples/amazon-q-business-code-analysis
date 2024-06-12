@@ -12,6 +12,7 @@ amazon_q = boto3.client('qbusiness')
 amazon_q_app_id = os.environ['AMAZON_Q_APP_ID']
 index_id = os.environ['Q_APP_INDEX']
 role_arn = os.environ['Q_APP_ROLE_ARN']
+q_app_data_source_id = os.environ['Q_APP_DATA_SOURCE_ID']
 repo_url = os.environ['REPO_URL']
 # Optional retrieve the SSH URL and SSH_KEY_NAME for the repository
 ssh_url = os.environ.get('SSH_URL')
@@ -56,7 +57,7 @@ def ask_question_with_attachment(prompt, file_path):
      return result.get("content", [])
 
 
-def upload_prompt_answer_and_file_name(filename, prompt, answer, repo_url):
+def upload_prompt_answer_and_file_name(filename, prompt, answer, repo_url, sync_job_id):
     cleaned_file_name = os.path.join(repo_url[:-4], '/'.join(filename.split('/')[1:]))
     amazon_q.batch_put_document(
         applicationId=amazon_q_app_id,
@@ -72,12 +73,24 @@ def upload_prompt_answer_and_file_name(filename, prompt, answer, repo_url):
                 },
                 'attributes': [
                     {
-                        'name': 'url',
+                        'name': '_source_uri',
                         'value': {
                             'stringValue': cleaned_file_name
                         }
+                    },
+                    {
+                        'name': '_data_source_id',
+                        'value': {
+                            'stringValue': q_app_data_source_id
+                        }
+                    },
+                    {
+                        'name': '_data_source_sync_job_execution_id',
+                        'value': {
+                            'stringValue': sync_job_id
+                        }
                     }
-                ]
+                ],
             },
         ]
     )
@@ -118,6 +131,12 @@ def write_ssh_key_to_tempfile(ssh_key):
         return f.name
 
 def process_repository(repo_url, ssh_url=None):
+
+    sync_job_id = amazon_q.start_data_source_sync_job(
+        applicationId=amazon_q_app_id,
+        dataSourceId=q_app_data_source_id,
+        indexId=index_id
+    )['executionId']
 
     # Temporary clone location
     tmp_dir = f"/tmp/{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}" 
@@ -180,25 +199,25 @@ def process_repository(repo_url, ssh_url=None):
                     prompt = "Come up with a list of questions and answers about the attached file. Keep answers dense with information. A good question for a database related file would be 'What is the database technology and architecture?' or for a file that executes SQL commands 'What are the SQL commands and what do they do?' or for a file that contains a list of API endpoints 'What are the API endpoints and what do they do?'"
                     formatted_prompt = format_prompt(prompt, code_text)
                     answer1 = ask_question_with_attachment(formatted_prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer1, repo_url)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer1, repo_url, sync_job_id)
                     # Upload generated documentation as well
                     prompt = "Generate comprehensive documentation about the attached file. Make sure you include what dependencies and other files are being referenced as well as function names, class names, and what they do."
                     formatted_prompt = format_prompt(prompt, code_text)
                     answer2 = ask_question_with_attachment(formatted_prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer2, repo_url)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer2, repo_url, sync_job_id)
                     # Identify anti-patterns
                     prompt = "Identify anti-patterns in the attached file. Make sure to include examples of how to fix them. Try Q&A like 'What are some anti-patterns in the file?' or 'What could be causing high latency?'"
                     formatted_prompt = format_prompt(prompt, code_text)
                     answer3 = ask_question_with_attachment(formatted_prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer3, repo_url)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer3, repo_url, sync_job_id)
                     # Suggest improvements
                     prompt = "Suggest improvements to the attached file. Try Q&A like 'What are some ways to improve the file?' or 'Where can the file be optimized?'"
                     formatted_prompt = format_prompt(prompt, code_text)
                     answer4 = ask_question_with_attachment(formatted_prompt, file_path)
-                    upload_prompt_answer_and_file_name(file_path, prompt, answer4, repo_url)
+                    upload_prompt_answer_and_file_name(file_path, prompt, answer4, repo_url, sync_job_id)
                     # Upload the file itself to the index
                     code = open(file_path, 'r')
-                    upload_prompt_answer_and_file_name(file_path, "", code.read(), repo_url)
+                    upload_prompt_answer_and_file_name(file_path, "", code.read(), repo_url, sync_job_id)
                     # save_answers(answer1+answer2+answer3+answer4, file_path, "documentation/")
                     processed_files.append(file)
                     break
@@ -211,6 +230,12 @@ def process_repository(repo_url, ssh_url=None):
                 
     print(f"Processed files: {processed_files}")
     print(f"Failed files: {failed_files}")
+    # Stop data source sync
+    amazon_q.stop_data_source_sync_job(
+        applicationId=amazon_q_app_id,
+        dataSourceId=q_app_data_source_id,
+        indexId=index_id,
+    )
 
 if __name__ == "__main__":
     main()

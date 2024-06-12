@@ -82,12 +82,28 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       description: 'Amazon Q Business Application Name',
     });
 
+    new cdk.CfnOutput(this, 'QBusinessAppId', {
+      value: qBusinessConstruct.appId,
+      description: 'Amazon Q Business Application Id',
+    });
+
+    new cdk.CfnOutput(this, 'QBusinessAppIndexId', {
+      value: qBusinessConstruct.indexId,
+      description: 'Amazon Q Business Application Index Id',
+    });
+
+    new cdk.CfnOutput(this, 'QBusinessAppDataSourceId', {
+      value: qBusinessConstruct.dataSourceId,
+      description: 'Amazon Q Business Application Data Source Id',
+    });
+
     // AWS Batch to run the code analysis
     const awsBatchConstruct = new AwsBatchAnalysisConstruct(this, 'AwsBatchConstruct', {
       qAppRoleArn: qIamRole.app_role.roleArn,
       qAppName: qAppName,
       qAppId: qBusinessConstruct.appId,
       qAppIndexId: qBusinessConstruct.indexId,
+      qAppDataSourceId: qBusinessConstruct.dataSourceId,
       repository: repositoryUrl,
       boto3Layer: layer,
       sshUrl: sshUrl,

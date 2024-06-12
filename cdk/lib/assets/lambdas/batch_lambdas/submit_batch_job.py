@@ -35,6 +35,7 @@ def on_create(event, physical_id):
     ssh_key_name = os.environ.get("SSH_KEY_NAME")
     q_app_id = os.environ['AMAZON_Q_APP_ID']
     q_app_index = os.environ['Q_APP_INDEX']
+    q_app_data_source_id = os.environ['Q_APP_DATA_SOURCE_ID']
 
     container_overrides = {
         "environment": [{
@@ -60,7 +61,16 @@ def on_create(event, physical_id):
         {
             "name": "Q_APP_ROLE_ARN",
             "value": q_app_role_arn
-        }],
+        },
+        {
+            "name": "Q_APP_DATA_SOURCE_ID",
+            "value": q_app_data_source_id
+        },
+        {
+            "name": "Q_APP_NAME",
+            "value": q_app_name
+        }
+        ],
         "command": [
             "sh","-c",f"yum -y install python-pip git && pip install boto3 awscli GitPython && aws s3 cp s3://{s3_bucket}/code-processing/generate_documentation_and_ingest_code.py . && python3 generate_documentation_and_ingest_code.py"
         ]

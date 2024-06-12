@@ -9,6 +9,7 @@ export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly qAppName: string;
   readonly qAppId: string;
   readonly qAppIndexId: string
+  readonly qAppDataSourceId: string;
   readonly qAppRoleArn: string;
   readonly repository: string;
   readonly boto3Layer: lambda.LayerVersion;
@@ -72,6 +73,9 @@ export class AwsBatchAnalysisConstruct extends Construct {
         actions: [
           "qbusiness:ChatSync",
           "qbusiness:BatchPutDocument",
+          "qbusiness:BatchDeleteDocument",
+          "qbusiness:StartDataSourceSyncJob",
+          "qbusiness:StopDataSourceSyncJob",
         ],
         resources: [
           `arn:aws:qbusiness:${cdk.Stack.of(this).region}:${awsAccountId}:application/*`,
@@ -176,6 +180,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
           REPO_URL: props.repository,
           Q_APP_NAME: props.qAppName,
           AMAZON_Q_APP_ID: props.qAppId,
+          Q_APP_DATA_SOURCE_ID: props.qAppDataSourceId,
           Q_APP_INDEX: props.qAppIndexId,
           Q_APP_ROLE_ARN: props.qAppRoleArn,
           S3_BUCKET: s3Bucket.bucketName,

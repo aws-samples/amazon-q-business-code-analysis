@@ -15,6 +15,7 @@ const defaultProps: Partial<CustomResourceProps> = {};
 export class CustomQBusinessConstruct extends Construct {
   public appId: string;
   public indexId: string;
+  public dataSourceId: string;
 
   constructor(scope: Construct, name: string, props: CustomResourceProps) {
     super(scope, name);
@@ -68,46 +69,63 @@ export class CustomQBusinessConstruct extends Construct {
       resources: [props.amazon_q_app_role_arn, props.amazon_q_web_exp_role_arn],
     }));
 
-    const powertools_layer = cdk.aws_lambda.LayerVersion.fromLayerVersionArn(
-        this,
-        'AwsLambdaPowerToolsLayer',
-        `arn:aws:lambda:${cdk.Stack.of(this).region}:017000801446:layer:AWSLambdaPowertoolsPythonV2-Arm64:29`
-    )
-
-    const onEvent = new cdk.aws_lambda.Function(this, 'QBusinessCreateDeleteAppFunction', {
-      runtime: cdk.aws_lambda.Runtime.PYTHON_3_12,
-      handler: 'amazon_q_app_resource.on_event',
-      code: cdk.aws_lambda.Code.fromAsset("lib/assets/lambdas/amazon_q_app"),
-      architecture: cdk.aws_lambda.Architecture.ARM_64,
-      layers: [props.boto3Layer, powertools_layer],
-      timeout: cdk.Duration.seconds(600),
-      environment: {
-        Q_APP_NAME: props.amazon_q_app_name,
-        Q_APP_ROLE_ARN: props.amazon_q_app_role_arn,
-        Q_WEB_EXP_ROLE_ARN: props.amazon_q_web_exp_role_arn,
-        IDC_ARN: props.idcArn,
-        POWERTOOLS_SERVICE_NAME: "amazon_q_app_custom_resource",
-        LOG_LEVEL: "INFO"
+    const cdk_app = new cdk.aws_qbusiness.CfnApplication(this, 'QBusinessApp', {
+      displayName: props.amazon_q_app_name,
+      roleArn: props.amazon_q_app_role_arn,
+      attachmentsConfiguration: {
+        attachmentsControlMode: "ENABLED",
       },
-      role: qBusinessCustomResourceRole
+      identityCenterInstanceArn: props.idcArn,
+      description: "Amazon Q Business Application",
+
     });
 
-    const qBusinessCustomResourceProvider = new cdk.custom_resources.Provider(this, 'QBusinessHandleAppChanges', {
-      onEventHandler: onEvent,
-      logRetention: cdk.aws_logs.RetentionDays.ONE_DAY
+    const q_index = new cdk.aws_qbusiness.CfnIndex(this, 'QBusinessIndex', {
+      applicationId: cdk_app.ref,
+      displayName: `${props.amazon_q_app_name}-index`,
+      description: "Amazon Q Business Index",
+      capacityConfiguration: {
+        units: 1,
+      },
+      type: "STARTER",
     });
 
-    const customResource = new cdk.CustomResource(this, 'QBusinessAppCfnHook', {
-      serviceToken: qBusinessCustomResourceProvider.serviceToken
+    const indexId = cdk.Fn.select(1, cdk.Fn.split("|", q_index.ref))
+
+    const q_retriever = new cdk.aws_qbusiness.CfnRetriever(this, 'QBusinessRetriever', {
+      applicationId: cdk_app.ref,
+      displayName: `${props.amazon_q_app_name}-retriever`,
+      type: "NATIVE_INDEX",
+      configuration: {
+        nativeIndexConfiguration: {
+          indexId: indexId,
+        },
+      }
     });
 
-    this.appId = customResource.getAttString('AmazonQAppId')
-    this.indexId = customResource.getAttString('AmazonQIndexId')
-
-
-    new cdk.CfnOutput(this, "QBusinessAppFunctionArn", {
-      value: onEvent.functionArn,
+    const q_data_source = new cdk.aws_qbusiness.CfnDataSource(this, 'QBusinessDataSource', {
+      applicationId: cdk_app.ref,
+      displayName: `${props.amazon_q_app_name}-data-source`,
+      indexId: indexId,
+      description: "Amazon Q Business Data Source",
+      configuration: {
+        type: "CUSTOM",
+        version: "1.0.0"
+      }
     });
+
+    const data_source_id = cdk.Fn.select(1, cdk.Fn.split("|", q_data_source.ref))
+
+    const web_experience = new cdk.aws_qbusiness.CfnWebExperience(this, 'QBusinessWebExperience', {
+      applicationId: cdk_app.ref,
+      roleArn: props.amazon_q_web_exp_role_arn,
+      title: props.amazon_q_app_name,
+      welcomeMessage: `Welcome to Amazon Q Business ${props.amazon_q_app_name}!`,
+    });
+
+    this.appId = cdk_app.ref;
+    this.indexId = indexId;
+    this.dataSourceId = data_source_id;
 
   }
 }
