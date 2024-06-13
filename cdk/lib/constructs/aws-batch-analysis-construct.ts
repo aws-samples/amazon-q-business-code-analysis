@@ -77,15 +77,6 @@ export class AwsBatchAnalysisConstruct extends Construct {
           `arn:aws:qbusiness:${cdk.Stack.of(this).region}:${awsAccountId}:application/*`,
         ],
       }));
-      
-      //Grant Job Execution Role access to bedrock
-      jobExecutionRole.addToPolicy(new cdk.aws_iam.PolicyStatement({
-        actions: [
-          "bedrock:InvokeModel"
-        ],
-        resources: ["*"],
-      }));
-
       // Grant Job Execution Role access to logging
       jobExecutionRole.addToPolicy(new cdk.aws_iam.PolicyStatement({
         actions: [
