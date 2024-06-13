@@ -168,7 +168,8 @@ def create_q_web_experience(amazon_q_app_id, q_app_name, q_web_exp_role_arn):
     response = amazon_q.create_web_experience(
         applicationId=amazon_q_app_id,
         title=q_app_name,
-        roleArn=q_web_exp_role_arn
+        roleArn=q_web_exp_role_arn,
+        welcomeMessage=f"Welcome to Amazon Q {q_app_name}!",
     )
     logger.info("create_web_experience response", extra={"response": response})
     web_experience_id = response["webExperienceId"]
