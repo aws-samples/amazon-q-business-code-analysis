@@ -16,6 +16,8 @@ export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly sshUrl: string;
   readonly sshKeyName: string;
   readonly neptuneGraphId: string;
+  readonly enableGraphParam: cdk.CfnParameter;
+  readonly enableResearchAgent: cdk.CfnParameter;
 }
 
 const defaultProps: Partial<AwsBatchAnalysisProps> = {};
@@ -41,12 +43,24 @@ export class AwsBatchAnalysisConstruct extends Construct {
       new cdk.aws_s3_deployment.BucketDeployment(this, "CodeProcessingBucketScript", {
         sources: [
           cdk.aws_s3_deployment.Source.asset(
-              "lib/assets/scripts"
+              "lib/assets/scripts/documentation_generation"
           ),
         ],
         destinationBucket: s3Bucket,
         destinationKeyPrefix: "code-processing",
       });
+
+      if (props.enableResearchAgent.valueAsString === 'true') {
+        new cdk.aws_s3_deployment.BucketDeployment(this, "CodeProcessingBucketScript", {
+          sources: [
+            cdk.aws_s3_deployment.Source.asset(
+                "lib/assets/scripts/research_agent"
+            ),
+          ],
+          destinationBucket: s3Bucket,
+          destinationKeyPrefix: "research-agent",
+        });
+      }
 
       const vpc = new ec2.Vpc(this, 'Vpc', {
         maxAzs: 2,
@@ -196,7 +210,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
       }));
 
       // Lambda to submit job
-      const submitJobLambda  = new lambda.Function(this, 'QBusinessSubmitJobLambda', {
+      const submitBatchAnalysisJob  = new lambda.Function(this, 'QBusinesssubmitBatchAnalysisJob', {
         code: lambda.Code.fromAsset('lib/assets/lambdas/batch_lambdas'),
         handler: 'submit_batch_job.on_event',
         runtime: lambda.Runtime.PYTHON_3_12,
@@ -204,14 +218,15 @@ export class AwsBatchAnalysisConstruct extends Construct {
           BATCH_JOB_DEFINITION: jobDefinition.jobDefinitionArn,
           BATCH_JOB_QUEUE: jobQueue.jobQueueArn,
           REPO_URL: props.repository,
-          Q_APP_NAME: props.qAppName,
           AMAZON_Q_APP_ID: props.qAppId,
+          Q_APP_NAME: props.qAppName,
           Q_APP_DATA_SOURCE_ID: props.qAppDataSourceId,
           Q_APP_INDEX: props.qAppIndexId,
           Q_APP_ROLE_ARN: props.qAppRoleArn,
           S3_BUCKET: s3Bucket.bucketName,
           SSH_URL: props.sshUrl,
           SSH_KEY_NAME: props.sshKeyName,
+          ENABLE_GRAPH: props.enableGraphParam.valueAsString,
           NEPTUNE_GRAPH_ID: props.neptuneGraphId,
         },
         layers: [props.boto3Layer],
@@ -220,53 +235,61 @@ export class AwsBatchAnalysisConstruct extends Construct {
         memorySize: 512,
       });
 
-      submitJobLambda.node.addDependency(jobDefinition);
+      submitBatchAnalysisJob.node.addDependency(jobDefinition);
 
       jobDefinition.grantSubmitJob(submitJobRole, jobQueue);
 
       // Custom resource to invoke the lambda
-      const submitJobLambdaProvider = new cdk.custom_resources.Provider(this, 'QBuinessSubmitJobLambdaProvider', {
-        onEventHandler: submitJobLambda,
+      const submitBatchAnalysisJobProvider = new cdk.custom_resources.Provider(this, 'QBuinesssubmitBatchAnalysisJobProvider', {
+        onEventHandler: submitBatchAnalysisJob,
         logRetention: cdk.aws_logs.RetentionDays.ONE_DAY,
       });
 
-      new cdk.CustomResource(this, 'QBusinessSubmitJobLambdaCustomResource', {
-        serviceToken: submitJobLambdaProvider.serviceToken,
+      new cdk.CustomResource(this, 'QBusinesssubmitBatchAnalysisJobCustomResource', {
+        serviceToken: submitBatchAnalysisJobProvider.serviceToken,
       });
 
-      // Add another lambda that invokes the file submit_agent_job.py
-      const submitAgentJobLambda = new lambda.Function(this, 'QBusinessSubmitAgentJobLambda', {
-        code: lambda.Code.fromAsset('lib/assets/lambdas/batch_lambdas'),
-        handler: 'submit_agent_job.on_event',
-        runtime: lambda.Runtime.PYTHON_3_12,
-        environment: {
-          BATCH_JOB_DEFINITION: jobDefinition.jobDefinitionArn,
-          BATCH_JOB_QUEUE: jobQueue.jobQueueArn,
-          REPO_URL: props.repository,
-          Q_APP_NAME: props.qAppName,
-          Q_APP_ROLE_ARN: props.qAppRoleArn,
-          S3_BUCKET: s3Bucket.bucketName,
-          SSH_URL: props.sshUrl,
-          SSH_KEY_NAME: props.sshKeyName,
-          NEPTUNE_GRAPH_ID: props.neptuneGraphId,
-        },
-        layers: [props.boto3Layer],
-        role: submitJobRole,
-        timeout: cdk.Duration.minutes(5),
-        memorySize: 512,
-      });
+      if (props.enableResearchAgent.valueAsString === 'true') {
 
-      submitAgentJobLambda.node.addDependency(jobDefinition);
+        // Add another lambda that invokes the file submit_agent_job.py
+        const submitAgentJobLambda = new lambda.Function(this, 'QBusinessSubmitAgentJobLambda', {
+          code: lambda.Code.fromAsset('lib/assets/lambdas/batch_lambdas'),
+          handler: 'submit_agent_job.on_event',
+          runtime: lambda.Runtime.PYTHON_3_12,
+          environment: {
+            BATCH_JOB_DEFINITION: jobDefinition.jobDefinitionArn,
+            BATCH_JOB_QUEUE: jobQueue.jobQueueArn,
+            REPO_URL: props.repository,
+            AMAZON_Q_APP_ID: props.qAppId,
+            Q_APP_NAME: props.qAppName,
+            Q_APP_DATA_SOURCE_ID: props.qAppDataSourceId,
+            Q_APP_INDEX: props.qAppIndexId,
+            Q_APP_ROLE_ARN: props.qAppRoleArn,
+            S3_BUCKET: s3Bucket.bucketName,
+            SSH_URL: props.sshUrl,
+            SSH_KEY_NAME: props.sshKeyName,
+            ENABLE_GRAPH: props.enableGraphParam.valueAsString,
+            NEPTUNE_GRAPH_ID: props.neptuneGraphId,
+          },
+          layers: [props.boto3Layer],
+          role: submitJobRole,
+          timeout: cdk.Duration.minutes(5),
+          memorySize: 512,
+        });
 
-      // Custom resource to invoke the lambda
-      const submitAgentJobLambdaProvider = new cdk.custom_resources.Provider(this, 'QBuinessSubmitAgentJobLambdaProvider', {
-        onEventHandler: submitAgentJobLambda,
-        logRetention: cdk.aws_logs.RetentionDays.ONE_DAY,
-      });
+        submitAgentJobLambda.node.addDependency(jobDefinition);
 
-      new cdk.CustomResource(this, 'QBusinessSubmitAgentJobLambdaCustomResource', {
-        serviceToken: submitAgentJobLambdaProvider.serviceToken,
-      });
+        // Custom resource to invoke the lambda
+        const submitAgentJobLambdaProvider = new cdk.custom_resources.Provider(this, 'QBuinessSubmitAgentJobLambdaProvider', {
+          onEventHandler: submitAgentJobLambda,
+          logRetention: cdk.aws_logs.RetentionDays.ONE_DAY,
+        });
+
+        new cdk.CustomResource(this, 'QBusinessSubmitAgentJobLambdaCustomResource', {
+          serviceToken: submitAgentJobLambdaProvider.serviceToken,
+        });
+
+      }
 
       // Output Job Queue
       new cdk.CfnOutput(this, 'JobQueue', {

@@ -16,7 +16,8 @@ ROLE_ARN = os.environ["ROLE_ARN"]
 graph_llm = ChatBedrock(
     temperature=TEMPERATURE, 
     model_name=MODEL_NAME,
-    max_tokens=MAX_TOKENS
+    max_tokens=MAX_TOKENS,
+    region_name="us-west-2"
 )
 amazon_q = boto3.client('qbusiness')
 neptune_graph = boto3.client('neptune-graph')

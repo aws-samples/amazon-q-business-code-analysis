@@ -21,6 +21,7 @@ repo_url = os.environ['REPO_URL']
 # Optional retrieve the SSH URL and SSH_KEY_NAME for the repository
 ssh_url = os.environ.get('SSH_URL')
 ssh_key_name = os.environ.get('SSH_KEY_NAME')
+enable_graph = os.environ.get('ENABLE_GRAPH')
 neptune_graph_id = os.environ.get('NEPTUNE_GRAPH_ID')
 
 def main():
@@ -32,15 +33,16 @@ def main():
         process_repository(repo_url)
     print(f"Finished processing repository {repo_url}")
 
-def format_prompt(prompt, code_text):
+def format_prompt(prompt, code_text, file_path):
      formatted_prompt = f"""
      {prompt}
+     File name: {file_path}
      File content: {code_text}
      """
      
      return formatted_prompt    
 
-def ask_question_with_attachment(prompt, file_path):
+def bedrock_completion(prompt):
      model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
      response = bedrock.invoke_model(
          modelId=model_id,
@@ -51,7 +53,7 @@ def ask_question_with_attachment(prompt, file_path):
                  "messages": [
                      {
                          "role": "user",
-                         "content": [{"type": "text", "text": f"File path: {file_path}\n" + prompt}],
+                         "content": [{"type": "text", "text": prompt}],
                   }
                ],
              }
@@ -327,21 +329,22 @@ def process_repository(repo_url, ssh_url=None):
                     ]
                     answers = []
                     print(f"\033[92mProcessing file: {file_path}\033[0m")
+                    code = open(file_path, 'r')
                     code_text = code.read()
                     code.close()
                     for prompt in prompts:
-                        formatted_prompt = format_prompt(prompt, code_text)
-                        answer = ask_question_with_attachment(prompt, file_path)
+                        formatted_prompt = format_prompt(prompt, code_text, file_path)
+                        answer = bedrock_completion(formatted_prompt)
                         upload_prompt_answer_and_file_name(file_path, prompt, answer, repo_url, branch, sync_job_id)
                         answers.append(answer)
                     # Upload the file itself to the index
-                    code = open(file_path, 'r')
-                    upload_prompt_answer_and_file_name(file_path, "", code.read(), repo_url)
-                    code.close()
+                    formatted_prompt = format_prompt("", code_text, file_path)
+                    upload_prompt_answer_and_file_name(formatted_prompt, "The original code file", code_text, repo_url, branch, sync_job_id)
                     # Save the answers to a file
                     save_answers('\n'.join(answers), file_path, "documentation/")
                     # Add nodes and edges to the graph
-                    #add_graph_nodes_and_edges(file_path)
+                    if enable_graph == 'true':
+                        add_graph_nodes_and_edges(file_path)
                     processed_files.append(file)
                     break
                 except Exception as e:

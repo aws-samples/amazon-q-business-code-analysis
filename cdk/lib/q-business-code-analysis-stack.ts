@@ -47,6 +47,20 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       allowedPattern: '^arn:aws[a-zA-Z0-9-]*:sso:[a-z0-9-]*:[0-9]{12}:instance\/.*$|^arn:aws:sso:::instance\/.*$',
     });
 
+    const enableGraphParam = new cdk.CfnParameter(this, 'EnableGraph', {
+      type: 'String',
+      description: 'Enable the Neptune Graph. Set to true to enable the graph, false to disable it.',
+      allowedValues: ['true', 'false'],
+      default: 'false'
+    });
+
+    const enableResearchAgentParam = new cdk.CfnParameter(this, 'EnableResearchAgent', {
+      type: 'String',
+      description: 'Enable the Research Agent. Set to true to enable the research agent, false to disable it.',
+      allowedValues: ['true', 'false'],
+      default: 'false'
+    });
+
     // Check if the repository url is provided
     const repositoryUrl = repositoryUrlParam.valueAsString;
     const projectName = projectNameParam.valueAsString;
@@ -98,9 +112,13 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
     });
 
     // Neptune Graph generation
-    const neptuneConstruct = new AmazonNeptuneConstruct(this, 'NeptuneConstruct', {
-      qAppName: qAppName
-    });
+    var neptuneGraphId = '';
+    if (enableGraphParam.valueAsString === 'true') {
+      const neptuneConstruct = new AmazonNeptuneConstruct(this, 'NeptuneConstruct', {
+        qAppName: qAppName
+      });
+      neptuneGraphId = neptuneConstruct.graph.attrGraphId;
+    }
 
     // AWS Batch to run the code analysis
     const awsBatchConstruct = new AwsBatchAnalysisConstruct(this, 'AwsBatchConstruct', {
@@ -113,7 +131,9 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       boto3Layer: layer,
       sshUrl: sshUrl,
       sshKeyName: sshKeyName,
-      neptuneGraphId: neptuneConstruct.graph.attrGraphId
+      enableResearchAgent: enableResearchAgentParam,
+      enableGraphParam: enableGraphParam,
+      neptuneGraphId: neptuneGraphId,
     });
 
     awsBatchConstruct.node.addDependency(qBusinessConstruct);

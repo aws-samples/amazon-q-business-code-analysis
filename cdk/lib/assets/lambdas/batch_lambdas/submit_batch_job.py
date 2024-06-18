@@ -36,6 +36,8 @@ def on_create(event, physical_id):
     q_app_id = os.environ['AMAZON_Q_APP_ID']
     q_app_index = os.environ['Q_APP_INDEX']
     q_app_data_source_id = os.environ['Q_APP_DATA_SOURCE_ID']
+    enable_graph = os.environ['ENABLE_GRAPH']
+    neptune_graph_id = os.environ['NEPTUNE_GRAPH_ID']
 
     container_overrides = {
         "environment": [{
@@ -69,12 +71,22 @@ def on_create(event, physical_id):
         {
             "name": "Q_APP_NAME",
             "value": q_app_name
+        },
+        {
+            "name": "ENABLE_GRAPH",
+            "value": enable_graph
         }
         ],
         "command": [
             "sh","-c",f"yum -y install python-pip git && pip install boto3 awscli GitPython && aws s3 cp s3://{s3_bucket}/code-processing/generate_documentation_and_ingest_code.py . && python3 generate_documentation_and_ingest_code.py"
         ]
     }
+
+    if enable_graph == 'true':
+        container_overrides["environment"].append({
+            "name": "NEPTUNE_GRAPH_ID",
+            "value": neptune_graph_id
+        })
 
     batch_job_name = f"aws-batch-job-code-analysis{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     print(f"Submitting job {batch_job_name} to queue {batch_job_queue} with definition {batch_job_definition} and container overrides {container_overrides}")

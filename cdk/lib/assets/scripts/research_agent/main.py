@@ -22,6 +22,8 @@ bash_tool = BashTool()
 file_tool = FileTool()
 amazon_q_tool = AmazonQTool()
 
+enable_graph = os.environ.get("ENABLE_GRAPH", "false")
+
 tools = [
     Tool(
         name="Bash",
@@ -36,29 +38,35 @@ tools = [
         of length two, representing the path of the file."""
     ),
     Tool(
-        name="Chat with Reasoning Graph",
-        func=amazon_q_tool.get_complete_answer,
-        description="Chat with the information currently in the reasoning graph to get an answer. Input should be a question."
-    ),
-    Tool(
-        name="Reasoning Graph",
-        func=amazon_q_tool.reasoning_graph,
-        description="""Input should be a OpenCypher commands/queries divided by ;. You can query, update, or add data to this Neptune Graph. For example you can add a new node, get a node's neighbors, or link nodes together.
-        Note, whenever you create a new node or nodes, make sure to also return their ids in the same command, i.e.
-        <example>
-        CREATE (LexBedrockMessageProcessor:File {name: 'KnowledgeBaseLexLangSmithLexBedrockMessageProcessor', path: 'bedrock/knowledge-base-lex-langsmith/lambda/LexBedrockMessageProcessor.py'} RETURN id(LexBedrockMessageProcessor) as id;
-        CREATE (TSConfig:File {name: 'tsconfig.json', path: 'tsconfig.json'}) RETURN id(TSConfig) as id;
-        </example>
-        You must write ONE COMMAND per CREATE.
-        Note this is running Amazon Neptune. When using this tool assume you are a Neptune Applied Scientist with vast knowledge of Generative AI.
-        """
-    ),
-    Tool(
         name="Add knowledge to Amazon Q",
         func=amazon_q_tool.add_info_to_amazon_q,
         description="A conversational knowledge base based on semantic similarity. Use this tool to add information to the Amazon Q knowledge base. Input works best as question and answer pairs. You can include multiple pairs in the same input. Try to make it as specific as possible to avoid ambiguity."
     )
 ]
+
+if enable_graph == "true":
+    tools.append(
+        Tool(
+            name="Chat with Reasoning Graph",
+            func=amazon_q_tool.get_complete_answer,
+            description="Chat with the information currently in the reasoning graph to get an answer. Input should be a question."
+        )
+    )
+    tools.append(
+        Tool(
+            name="Reasoning Graph",
+            func=amazon_q_tool.reasoning_graph,
+            description="""Input should be a OpenCypher commands/queries divided by ;. You can query, update, or add data to this Neptune Graph. For example you can add a new node, get a node's neighbors, or link nodes together.
+            Note, whenever you create a new node or nodes, make sure to also return their ids in the same command, i.e.
+            <example>
+            CREATE (LexBedrockMessageProcessor:File {name: 'KnowledgeBaseLexLangSmithLexBedrockMessageProcessor', path: 'bedrock/knowledge-base-lex-langsmith/lambda/LexBedrockMessageProcessor.py'} RETURN id(LexBedrockMessageProcessor) as id;
+            CREATE (TSConfig:File {name: 'tsconfig.json', path: 'tsconfig.json'}) RETURN id(TSConfig) as id;
+            </example>
+            You must write ONE COMMAND per CREATE.
+            Note this is running Amazon Neptune. When using this tool assume you are a Neptune Applied Scientist with vast knowledge of Generative AI.
+            """
+        )
+    )
 
 # Initialize parser and callback manager
 output_parser = CustomOutputParser()
@@ -67,6 +75,7 @@ cb = CallbackManager()
 agent_llm = ChatBedrock(
     model_kwargs={"temperature":TEMPERATURE}, 
     model_id=MODEL_ID,
+    region_name="us-west-2",
     callbacks=[cb],
 )
 
@@ -167,6 +176,7 @@ The goal we are trying to accomplish is the following: {goal}.
         llm=ChatBedrock(
             model_kwargs={"temperature":TEMPERATURE}, 
             model_id=MODEL_ID,
+            region_name="us-west-2"
         ),
         verbose=True, 
     )
@@ -240,6 +250,7 @@ def initialize_meta_chain():
         llm=ChatBedrock(
             model_kwargs={"temperature":TEMPERATURE}, 
             model_id=MODEL_ID,
+            region_name="us-west-2"
         ),
         prompt=meta_prompt, 
         verbose=True, 
@@ -301,7 +312,7 @@ def main(goal, max_meta_iters=5):
     david_instantiation_prompt = get_init_prompt()
     constraints = "You cannot use the open command. Everything must be done in the terminal. You cannot use nano or vim."
     tips = """You are in a mac zshell. You are already authenticated with AWS. To write to a file use the File Writer tool. Use non-blocking commands like cdk deploy --require-approval never. To write multiple commands use &&. 
-    Use the Chat with Reasoning Graph and Amazon Q tool, add info to amazon q and the reasoning graph to help you with your work and to save your progress for future agents who continue from where you left off."""
+    Use the Chat with Reasoning Graph (if available) and Amazon Q tool, add info to amazon q and the reasoning graph (if available) to help you with your work and to save your progress for future agents who continue from where you left off."""
     world_state_chain = initialize_world_state_chain()
     current_world_state = "The world is empty and has just been initialized."
     evaluation_chain = initialize_evaluation_chain()
@@ -373,7 +384,7 @@ if __name__ == '__main__':
     Here we set the goal and call the main function.
     """
     goal = f"""Clone the <repo/> and document everything about it in the reasoning graph and Amazon Q.
-    The reasoning graph and Amazon Q should be populated as much as possible so that someone can
-    immediately start working on it by using a combination of Amazon Q and the Reasoning Graph.
+    The reasoning graph (if available) and Amazon Q should be populated as much as possible so that someone can
+    immediately start working on it by using a combination of Amazon Q and the Reasoning Graph (if available).
     <repo>{os.environ["REPO_URL"]}</repo>"""
     main(goal)
