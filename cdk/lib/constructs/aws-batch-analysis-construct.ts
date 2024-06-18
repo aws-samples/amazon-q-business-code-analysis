@@ -246,7 +246,6 @@ export class AwsBatchAnalysisConstruct extends Construct {
           Q_APP_NAME: props.qAppName,
           Q_APP_ROLE_ARN: props.qAppRoleArn,
           S3_BUCKET: s3Bucket.bucketName,
-          Q_APP_USER_ID: props.qAppUserId,
           SSH_URL: props.sshUrl,
           SSH_KEY_NAME: props.sshKeyName,
           NEPTUNE_GRAPH_ID: props.neptuneGraphId,

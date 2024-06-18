@@ -3,7 +3,7 @@ import { Construct } from 'constructs';
 import { CustomQBusinessConstruct } from './constructs/custom-amazon-q-construct'
 import { QIamRoleConstruct } from './constructs/q-iam-role-construct';
 import { AwsBatchAnalysisConstruct } from './constructs/aws-batch-analysis-construct';
-
+import { AmazonNeptuneConstruct } from './constructs/amazon-neptune-construct';
 
 export class QBusinessCodeAnalysisStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -97,6 +97,11 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       description: 'Amazon Q Business Application Data Source Id',
     });
 
+    // Neptune Graph generation
+    const neptuneConstruct = new AmazonNeptuneConstruct(this, 'NeptuneConstruct', {
+      qAppName: qAppName
+    });
+
     // AWS Batch to run the code analysis
     const awsBatchConstruct = new AwsBatchAnalysisConstruct(this, 'AwsBatchConstruct', {
       qAppRoleArn: qIamRole.app_role.roleArn,
@@ -107,7 +112,8 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       repository: repositoryUrl,
       boto3Layer: layer,
       sshUrl: sshUrl,
-      sshKeyName: sshKeyName
+      sshKeyName: sshKeyName,
+      neptuneGraphId: neptuneConstruct.graph.attrGraphId
     });
 
     awsBatchConstruct.node.addDependency(qBusinessConstruct);

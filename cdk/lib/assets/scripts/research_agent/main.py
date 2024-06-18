@@ -36,9 +36,9 @@ tools = [
         of length two, representing the path of the file."""
     ),
     Tool(
-        name="Chat with Reasoning Graph and Amazon Q",
+        name="Chat with Reasoning Graph",
         func=amazon_q_tool.get_complete_answer,
-        description="Chat with the information currently in the knowledge graph to get a complete answer. Input should be a question."
+        description="Chat with the information currently in the reasoning graph to get an answer. Input should be a question."
     ),
     Tool(
         name="Reasoning Graph",
@@ -374,6 +374,6 @@ if __name__ == '__main__':
     """
     goal = f"""Clone the <repo/> and document everything about it in the reasoning graph and Amazon Q.
     The reasoning graph and Amazon Q should be populated as much as possible so that someone can
-    immediately start working on it by using the Chat with Reasoning Graph and Amazon Q tool.
+    immediately start working on it by using a combination of Amazon Q and the Reasoning Graph.
     <repo>{os.environ["REPO_URL"]}</repo>"""
     main(goal)

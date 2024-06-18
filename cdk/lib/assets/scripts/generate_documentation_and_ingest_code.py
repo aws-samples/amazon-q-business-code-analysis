@@ -24,13 +24,13 @@ ssh_key_name = os.environ.get('SSH_KEY_NAME')
 neptune_graph_id = os.environ.get('NEPTUNE_GRAPH_ID')
 
 def main():
-    print(f"Processing repository... {original_repo_url}")
+    print(f"Processing repository... {repo_url}")
     # If ssh_url ends with .git then process it
     if ssh_url and ssh_url.endswith('.git'):
-        process_repository(original_repo_url, ssh_url)
+        process_repository(repo_url, ssh_url)
     else:
-        process_repository(original_repo_url)
-    print(f"Finished processing repository {original_repo_url}")
+        process_repository(repo_url)
+    print(f"Finished processing repository {repo_url}")
 
 def format_prompt(prompt, code_text):
      formatted_prompt = f"""
@@ -181,7 +181,7 @@ def add_graph_nodes_and_edges(code_file):
     When you create nodes YOU MUST make the node names as detailed as possible to keep them unique ALSO MAKE SURE TO RETURN THE ID OF THE NODE YOU CREATE., i.e. CREATE (LexBedrockMessageProcessor:File {{name: 'KnowledgeBaseLexLangSmithLexBedrockMessageProcessor', path: 'bedrock/knowledge-base-lex-langsmith/lambda/LexBedrockMessageProcessor.py'}} RETURN id(LexBedrockMessageProcessor) as id
     Seperate queries with ;
     Capture information and relationships on functions, classes, and other relevant information.
-    Repository: {original_repo_url}
+    Repository: {repo_url}
     Filename: {code_file}
     File content: {code_text}
     """

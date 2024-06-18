@@ -44,10 +44,8 @@ class AmazonQTool:
         )
         return answer['systemMessage'], answer['sourceAttributions']
     
-    def get_graph_context(self,prompt, sources):
-        """Useful to get the graph context of the sources.
-        The input to this tool should be a list of sources.
-        For example, `['LexBedrockMessageProcessor.py']`."""
+    def get_graph_context(self,prompt):
+        """Useful to get the semantically similar nodes in the graph."""
         graph_context = []
         # Get top K by prompt
         embedding = self.generate_embeddings(prompt)
@@ -66,7 +64,7 @@ class AmazonQTool:
     
     def reasoning_graph(self, input):
         """Useful to interact with the reasoning graph
-        The input to this tool should be an OpenCypher query that will be executed and return the return a string of OpenCypher graph response."""
+        The input to this tool should be an OpenCypher query that will be executed and return a string of OpenCypher graph response."""
         commands = input.split(';')
         for command in commands:
             if (len(command) <= 1):
@@ -134,6 +132,34 @@ class AmazonQTool:
 
         return final_answer.content
     
+    def summarize_graph_response(self, prompt, graph_context):
+        """Useful to combine the answer and graph context.
+        The input to this tool should be the answer and graph context.
+        For example, `What is the repository name?`, `What is the repository name?`."""
+        # New chain to answer original question combining q answer and graph response
+        system = (
+            """Use the graph context to get an answer to the original question. 
+            The context is not necessarily relevant to the question, we're just doing a semantic search.
+            If you are unable to answer from from the context that is ok.
+            Write your response between <response> and </response>.
+            """
+        )
+        human = """Question: {question}
+        Graph Response: {graph_response}"""
+
+        prompt = ChatPromptTemplate.from_messages([("system", system), ("human", human)])
+
+        chain = prompt | graph_llm
+
+        final_answer = chain.invoke(
+            {
+                "question":prompt,
+                "graph_response":graph_context
+            }
+        )
+
+        return final_answer.content
+    
     def generate_embeddings(self, body):
         """
         Generate a vector of embeddings for a text input using Amazon Titan Embeddings G1 - Text on demand.
@@ -149,7 +175,7 @@ class AmazonQTool:
 
         accept = "application/json"
         content_type = "application/json"
-        model_id = "amazon.titan-embed-text-v1"
+        model_id = "amazon.titan-embed-text-v2:0"
 
         response = bedrock.invoke_model(
             body=json.dumps({
@@ -165,10 +191,11 @@ class AmazonQTool:
         """Useful to get a complete answer to a prompt.
         The input to this tool should be a prompt.
         For example, `What is the repository name?`."""
-        q_answer, sources = self.ask_question_about_repo(prompt)
-        print("Q Answer: ", q_answer)
-        graph_context = self.get_graph_context(prompt, sources)
-        answer = self.combine_q_answer_with_graph(prompt, q_answer, graph_context)
+        # q_answer, sources = self.ask_question_about_repo(prompt)
+        # print("Q Answer: ", q_answer)
+        graph_context = self.get_graph_context(prompt)
+        answer = self.summarize_graph_response(prompt, graph_context)
+        # answer = self.combine_q_answer_with_graph(prompt, q_answer, graph_context)
         return answer
 
     def add_info_to_amazon_q(self, _input):
