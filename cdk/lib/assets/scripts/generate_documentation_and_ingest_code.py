@@ -5,21 +5,23 @@ import os
 import git
 import shutil
 import tempfile
+import uuid
 import re
 import random
 
+bedrock = boto3.client('bedrock-runtime')
 amazon_q = boto3.client('qbusiness')
 neptune_graph = boto3.client('neptune-graph')
 bedrock = boto3.client('bedrock-runtime')
 amazon_q_app_id = os.environ['AMAZON_Q_APP_ID']
-amazon_q_user_id = os.environ['AMAZON_Q_USER_ID']
 index_id = os.environ['Q_APP_INDEX']
 role_arn = os.environ['Q_APP_ROLE_ARN']
-original_repo_url = os.environ['REPO_URL']
+q_app_data_source_id = os.environ['Q_APP_DATA_SOURCE_ID']
+repo_url = os.environ['REPO_URL']
 # Optional retrieve the SSH URL and SSH_KEY_NAME for the repository
 ssh_url = os.environ.get('SSH_URL')
 ssh_key_name = os.environ.get('SSH_KEY_NAME')
-neptune_graph_id = os.environ['NEPTUNE_GRAPH_ID']
+neptune_graph_id = os.environ.get('NEPTUNE_GRAPH_ID')
 
 def main():
     print(f"Processing repository... {original_repo_url}")
@@ -30,27 +32,40 @@ def main():
         process_repository(original_repo_url)
     print(f"Finished processing repository {original_repo_url}")
 
-def ask_question_with_attachment(prompt, filename):
-    data=open(filename, 'rb')
-    # Generate random id between 1 and 999999
-    random_id = str(random.randint(1, 999999))
-    answer = amazon_q.chat_sync(
-        applicationId=amazon_q_app_id,
-        userId=amazon_q_user_id+random_id,
-        userMessage=prompt,
-        attachments=[
+def format_prompt(prompt, code_text):
+     formatted_prompt = f"""
+     {prompt}
+     File content: {code_text}
+     """
+     
+     return formatted_prompt    
+
+def ask_question_with_attachment(prompt, file_path):
+     model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
+     response = bedrock.invoke_model(
+         modelId=model_id,
+         body=json.dumps(
             {
-                'data': data.read(),
-                'name': filename
-            },
-        ],
-    )
-    return answer['systemMessage']
+                "anthropic_version": "bedrock-2023-05-31",
+                 "max_tokens": 1024,
+                 "messages": [
+                     {
+                         "role": "user",
+                         "content": [{"type": "text", "text": f"File path: {file_path}\n" + prompt}],
+                  }
+               ],
+             }
+        ),
+     )
+     result = json.loads(response.get("body").read())
 
-import uuid
+     return result.get("content", [])
 
-def upload_prompt_answer_and_file_name(filename, prompt, answer, repo_url):
-    cleaned_file_name = os.path.join(repo_url[:-4], '/'.join(filename.split('/')[1:]))
+
+def upload_prompt_answer_and_file_name(filename, prompt, answer, repo_url, branch, sync_job_id):
+    base_url = repo_url[:-4]
+    cleaned_file_name = f"{base_url}/blob/{branch}/{'/'.join(filename.split('/')[1:])}"
+    print(f"Cleaned File Name: {cleaned_file_name}")
     amazon_q.batch_put_document(
         applicationId=amazon_q_app_id,
         indexId=index_id,
@@ -65,12 +80,24 @@ def upload_prompt_answer_and_file_name(filename, prompt, answer, repo_url):
                 },
                 'attributes': [
                     {
-                        'name': 'url',
+                        'name': '_source_uri',
                         'value': {
                             'stringValue': cleaned_file_name
                         }
+                    },
+                    {
+                        'name': '_data_source_id',
+                        'value': {
+                            'stringValue': q_app_data_source_id
+                        }
+                    },
+                    {
+                        'name': '_data_source_sync_job_execution_id',
+                        'value': {
+                            'stringValue': sync_job_id
+                        }
                     }
-                ]
+                ],
             },
         ]
     )
@@ -86,7 +113,7 @@ def save_answers(answer, filepath, folder):
     # Replace all file endings with .txt
     filepath = filepath[:filepath.rfind('.')] + ".txt"
     with open(f"{folder}{filepath}", "w") as f:
-        f.write(answer)
+        f.write(str(answer))
 
 def should_ignore_path(path):
     path_components = path.split(os.sep)
@@ -230,6 +257,12 @@ def add_graph_nodes_and_edges(code_file):
 
 def process_repository(repo_url, ssh_url=None):
 
+    sync_job_id = amazon_q.start_data_source_sync_job(
+        applicationId=amazon_q_app_id,
+        dataSourceId=q_app_data_source_id,
+        indexId=index_id
+    )['executionId']
+
     # Temporary clone location
     tmp_dir = f"/tmp/{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}" 
 
@@ -239,15 +272,18 @@ def process_repository(repo_url, ssh_url=None):
         os.makedirs(destination_folder)
 
     # Clone the repository
-    # If you authenticate with some other repo provider just change the line below
     print(f"Cloning repository... {repo_url}")
     if ssh_url:
         ssh_key = get_ssh_key(ssh_key_name)
         ssh_key_file = write_ssh_key_to_tempfile(ssh_key)
         ssh_command = f"ssh -i {ssh_key_file} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
         repo = git.Repo.clone_from(ssh_url, tmp_dir, env={"GIT_SSH_COMMAND": ssh_command})
+        branch = repo.active_branch
+        print(f"Active Branch Name: {branch}")
     else:
         repo = git.Repo.clone_from(repo_url, tmp_dir)
+        branch = repo.active_branch
+        print(f"Active Branch Name: {branch}")
     print(f"Finished cloning repository {repo_url}")
     # Copy all files to destination folder
     for src_dir, dirs, files in os.walk(tmp_dir):
@@ -291,9 +327,12 @@ def process_repository(repo_url, ssh_url=None):
                     ]
                     answers = []
                     print(f"\033[92mProcessing file: {file_path}\033[0m")
+                    code_text = code.read()
+                    code.close()
                     for prompt in prompts:
+                        formatted_prompt = format_prompt(prompt, code_text)
                         answer = ask_question_with_attachment(prompt, file_path)
-                        upload_prompt_answer_and_file_name(file_path, prompt, answer, repo_url)
+                        upload_prompt_answer_and_file_name(file_path, prompt, answer, repo_url, branch, sync_job_id)
                         answers.append(answer)
                     # Upload the file itself to the index
                     code = open(file_path, 'r')
@@ -302,7 +341,7 @@ def process_repository(repo_url, ssh_url=None):
                     # Save the answers to a file
                     save_answers('\n'.join(answers), file_path, "documentation/")
                     # Add nodes and edges to the graph
-                    add_graph_nodes_and_edges(file_path)
+                    #add_graph_nodes_and_edges(file_path)
                     processed_files.append(file)
                     break
                 except Exception as e:
@@ -314,6 +353,12 @@ def process_repository(repo_url, ssh_url=None):
                 
     print(f"Processed files: {processed_files}")
     print(f"Failed files: {failed_files}")
+    # Stop data source sync
+    amazon_q.stop_data_source_sync_job(
+        applicationId=amazon_q_app_id,
+        dataSourceId=q_app_data_source_id,
+        indexId=index_id,
+    )
 
 if __name__ == "__main__":
     main()

@@ -4,14 +4,15 @@ import * as batch from "aws-cdk-lib/aws-batch";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as lambda from "aws-cdk-lib/aws-lambda";
-import { assert } from "console";
 
 export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly qAppName: string;
+  readonly qAppId: string;
+  readonly qAppIndexId: string
+  readonly qAppDataSourceId: string;
   readonly qAppRoleArn: string;
   readonly repository: string;
   readonly boto3Layer: lambda.LayerVersion;
-  readonly qAppUserId: string;
   readonly sshUrl: string;
   readonly sshKeyName: string;
   readonly neptuneGraphId: string;
@@ -73,12 +74,14 @@ export class AwsBatchAnalysisConstruct extends Construct {
         actions: [
           "qbusiness:ChatSync",
           "qbusiness:BatchPutDocument",
+          "qbusiness:BatchDeleteDocument",
+          "qbusiness:StartDataSourceSyncJob",
+          "qbusiness:StopDataSourceSyncJob",
         ],
         resources: [
           `arn:aws:qbusiness:${cdk.Stack.of(this).region}:${awsAccountId}:application/*`,
         ],
       }));
-
       // Grant Job Execution Role access to logging
       jobExecutionRole.addToPolicy(new cdk.aws_iam.PolicyStatement({
         actions: [
@@ -97,6 +100,16 @@ export class AwsBatchAnalysisConstruct extends Construct {
           "iam:PassRole",
         ],
         resources: [props.qAppRoleArn],
+      }));
+
+      // Add Invoke model permission to the role
+      jobExecutionRole.addToPolicy(new cdk.aws_iam.PolicyStatement({
+        actions: [
+          "bedrock:InvokeModel",
+        ],
+        resources: [
+          `arn:aws:bedrock:${cdk.Stack.of(this).region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0`,
+        ],
       }));
 
       s3Bucket.grantReadWrite(jobExecutionRole);
@@ -192,9 +205,11 @@ export class AwsBatchAnalysisConstruct extends Construct {
           BATCH_JOB_QUEUE: jobQueue.jobQueueArn,
           REPO_URL: props.repository,
           Q_APP_NAME: props.qAppName,
+          AMAZON_Q_APP_ID: props.qAppId,
+          Q_APP_DATA_SOURCE_ID: props.qAppDataSourceId,
+          Q_APP_INDEX: props.qAppIndexId,
           Q_APP_ROLE_ARN: props.qAppRoleArn,
           S3_BUCKET: s3Bucket.bucketName,
-          Q_APP_USER_ID: props.qAppUserId,
           SSH_URL: props.sshUrl,
           SSH_KEY_NAME: props.sshKeyName,
           NEPTUNE_GRAPH_ID: props.neptuneGraphId,
@@ -204,7 +219,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
         timeout: cdk.Duration.minutes(5),
         memorySize: 512,
       });
-      
+
       submitJobLambda.node.addDependency(jobDefinition);
 
       jobDefinition.grantSubmitJob(submitJobRole, jobQueue);

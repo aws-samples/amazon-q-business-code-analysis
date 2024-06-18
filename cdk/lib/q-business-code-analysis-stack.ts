@@ -21,11 +21,6 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       allowedPattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]*$'
     });
 
-    const qAppUserIdParam = new cdk.CfnParameter(this, 'QAppUserId', {
-      type: 'String',
-      description: 'The user ID of the Amazon Q Business user. At the time of writing, any value will be accepted.',
-    });
-
     const repositoryUrlParam = new cdk.CfnParameter(this, 'RepositoryUrl', {
       type: 'String',
       description: 'The Git URL of the repository to scan and ingest into Amazon Q Business. Note it should end with .git, i.e. https://github.com/aws-samples/langchain-agents.git',
@@ -46,50 +41,75 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       default: 'None'
     });
 
+    const idcArnParam = new cdk.CfnParameter(this, 'IdcArn', {
+      type: 'String',
+      description: 'The arn of Identity Center in the same region that the Q application is going to be deployed',
+      allowedPattern: '^arn:aws[a-zA-Z0-9-]*:sso:[a-z0-9-]*:[0-9]{12}:instance\/.*$|^arn:aws:sso:::instance\/.*$',
+    });
+
     // Check if the repository url is provided
     const repositoryUrl = repositoryUrlParam.valueAsString;
-    const qAppUserId = qAppUserIdParam.valueAsString;
     const projectName = projectNameParam.valueAsString;
     const sshUrl = sshUrlParam.valueAsString;
     const sshKeyName = sshKeyNameParam.valueAsString;
 
     const qAppName = projectName;
+    const idcArn = idcArnParam.valueAsString;
 
-    const QIamRole = new QIamRoleConstruct(this, `QIamConstruct`, { 
-      roleName: qAppRoleName 
+    const qIamRole = new QIamRoleConstruct(this, `QIamConstruct`, {
+      roleName: qAppRoleName
     });
 
     const layer = new cdk.aws_lambda.LayerVersion(this, 'layerWithQBusiness', {
-      code: cdk.aws_lambda.Code.fromAsset('lib/assets/lambda-layer/boto3v1-34-40.zip'),
+      code: cdk.aws_lambda.Code.fromAsset('lib/assets/lambda-layer/boto3_v1.34.109_py3.12.zip'),
       compatibleRuntimes: [cdk.aws_lambda.Runtime.PYTHON_3_12],
-      description: 'Boto3 v1.34.40',
+      description: 'Boto3 v1.34.109',
     });
 
     const qBusinessConstruct = new CustomQBusinessConstruct(this, 'QBusinessAppConstruct', {
       amazon_q_app_name: qAppName,
-      amazon_q_app_role_arn: QIamRole.role.roleArn,
-      boto3Layer: layer
+      amazon_q_app_role_arn: qIamRole.app_role.roleArn,
+      amazon_q_web_exp_role_arn: qIamRole.web_exp_role.roleArn,
+      boto3Layer: layer,
+      idcArn: idcArn
     });
 
     qBusinessConstruct.node.addDependency(layer);
-    qBusinessConstruct.node.addDependency(QIamRole);
+    qBusinessConstruct.node.addDependency(qIamRole);
 
     new cdk.CfnOutput(this, 'QBusinessAppName', {
       value: qAppName,
       description: 'Amazon Q Business Application Name',
     });
 
+    new cdk.CfnOutput(this, 'QBusinessAppId', {
+      value: qBusinessConstruct.appId,
+      description: 'Amazon Q Business Application Id',
+    });
+
+    new cdk.CfnOutput(this, 'QBusinessAppIndexId', {
+      value: qBusinessConstruct.indexId,
+      description: 'Amazon Q Business Application Index Id',
+    });
+
+    new cdk.CfnOutput(this, 'QBusinessAppDataSourceId', {
+      value: qBusinessConstruct.dataSourceId,
+      description: 'Amazon Q Business Application Data Source Id',
+    });
+
     // AWS Batch to run the code analysis
     const awsBatchConstruct = new AwsBatchAnalysisConstruct(this, 'AwsBatchConstruct', {
-      qAppRoleArn: QIamRole.role.roleArn,
+      qAppRoleArn: qIamRole.app_role.roleArn,
       qAppName: qAppName,
+      qAppId: qBusinessConstruct.appId,
+      qAppIndexId: qBusinessConstruct.indexId,
+      qAppDataSourceId: qBusinessConstruct.dataSourceId,
       repository: repositoryUrl,
       boto3Layer: layer,
-      qAppUserId: qAppUserId,
       sshUrl: sshUrl,
       sshKeyName: sshKeyName
     });
- 
+
     awsBatchConstruct.node.addDependency(qBusinessConstruct);
 
   }

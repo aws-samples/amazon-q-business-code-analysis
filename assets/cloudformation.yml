@@ -4,9 +4,6 @@ Parameters:
     Type: String
     AllowedPattern: ^[a-zA-Z0-9][a-zA-Z0-9_-]*$
     Description: The project name, for example langchain-agents.
-  QAppUserId:
-    Type: String
-    Description: The user ID of the Amazon Q Business user. At the time of writing, any value will be accepted.
   RepositoryUrl:
     Type: String
     AllowedPattern: ^https?://.+(.git)$
@@ -1321,8 +1318,6 @@ Resources:
               - Arn
           S3_BUCKET:
             Ref: AwsBatchConstructCodeProcessingBucket7564CB72
-          Q_APP_USER_ID:
-            Ref: QAppUserId
           SSH_URL:
             Ref: SshUrl
           SSH_KEY_NAME:
