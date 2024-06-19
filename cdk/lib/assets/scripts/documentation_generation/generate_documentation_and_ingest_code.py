@@ -338,10 +338,9 @@ def process_repository(repo_url, ssh_url=None):
                         upload_prompt_answer_and_file_name(file_path, prompt, answer, repo_url, branch, sync_job_id)
                         answers.append(answer)
                     # Upload the file itself to the index
-                    formatted_prompt = format_prompt("", code_text, file_path)
-                    upload_prompt_answer_and_file_name(formatted_prompt, "The original code file", code_text, repo_url, branch, sync_job_id)
+                    upload_prompt_answer_and_file_name(file_path, "", code_text, repo_url, branch, sync_job_id)
                     # Save the answers to a file
-                    save_answers('\n'.join(answers), file_path, "documentation/")
+                    # save_answers('\n'.join(answers), file_path, "documentation/")
                     # Add nodes and edges to the graph
                     if enable_graph == 'true':
                         add_graph_nodes_and_edges(file_path)
