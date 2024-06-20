@@ -5,19 +5,18 @@ import boto3
 import os
 import uuid
 
-MODEL_NAME = "claude-3-opus-20240229"
+MODEL_ID = "anthropic.claude-3-opus-20240229-v1:0"
 TEMPERATURE = 0
 MAX_TOKENS = 4096
 AMAZON_Q_APP_ID = os.environ["AMAZON_Q_APP_ID"]
-INDEX_ID = os.environ["INDEX_ID"]
-NEPTUNE_GRAPH_ID = os.environ["NEPTUNE_GRAPH_ID"]
-ROLE_ARN = os.environ["ROLE_ARN"]
+INDEX_ID = os.environ["Q_APP_INDEX"]
+NEPTUNE_GRAPH_ID = os.environ.get("NEPTUNE_GRAPH_ID")
+ROLE_ARN = os.environ["Q_APP_ROLE_ARN"]
 
 graph_llm = ChatBedrock(
-    temperature=TEMPERATURE, 
-    model_name=MODEL_NAME,
-    max_tokens=MAX_TOKENS,
-    region_name="us-west-2"
+    model_kwargs={"temperature":TEMPERATURE}, 
+    model_id=MODEL_ID,
+    region_name="us-west-2",
 )
 amazon_q = boto3.client('qbusiness')
 neptune_graph = boto3.client('neptune-graph')
