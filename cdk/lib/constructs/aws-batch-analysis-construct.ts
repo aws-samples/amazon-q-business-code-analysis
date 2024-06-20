@@ -157,7 +157,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
         resources: [
           `arn:aws:bedrock:${cdk.Stack.of(this).region}::foundation-model/amazon.titan-embed-text-v1`,
           `arn:aws:bedrock:${cdk.Stack.of(this).region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0`,
-          `arn:aws:bedrock:${cdk.Stack.of(this).region}::foundation-model/anthropic.claude-3-opus-20240229-v1:0`,
+          `arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-3-opus-20240229-v1:0`,
           `arn:aws:bedrock:${cdk.Stack.of(this).region}::foundation-model/anthropic.claude-3-haiku-20240229-v1:1`,
         ]
       }));
