@@ -273,6 +273,7 @@ def initialize_evaluation_chain():
         llm=ChatBedrock(
             model_kwargs={"temperature":TEMPERATURE}, 
             model_id=MODEL_ID,
+            region_name="us-west-2"
         ),
         prompt=evaluation_prompt, 
         verbose=True, 
