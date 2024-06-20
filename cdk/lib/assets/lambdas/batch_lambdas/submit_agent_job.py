@@ -86,7 +86,7 @@ def on_create(event, physical_id):
         }
         ],
         "command": [
-            "sh","-c",f"aws s3 cp --recursive s3://{s3_bucket}/research-agent/ . && pip install -r requirements.txt && python3 main.py"
+            "sh","-c",f"yum -y install python-pip && pip install awscli boto3 pandas langchain langchain-community langchain-aws pexpect && aws s3 cp --recursive s3://{s3_bucket}/research-agent/ . && python3 main.py"
         ]
     }
 

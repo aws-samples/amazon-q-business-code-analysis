@@ -17,7 +17,7 @@ export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly sshKeyName: string;
   readonly neptuneGraphId: string;
   readonly enableGraphParam: cdk.CfnParameter;
-  readonly enableResearchAgent: cdk.CfnParameter;
+  readonly enableResearchAgentParam: cdk.CfnParameter;
 }
 
 const defaultProps: Partial<AwsBatchAnalysisProps> = {};
@@ -50,8 +50,8 @@ export class AwsBatchAnalysisConstruct extends Construct {
         destinationKeyPrefix: "code-processing",
       });
 
-      if (props.enableResearchAgent.valueAsString === 'true') {
-        new cdk.aws_s3_deployment.BucketDeployment(this, "CodeProcessingBucketScript", {
+      if (cdk.Fn.conditionEquals(props.enableResearchAgentParam.valueAsString, 'true')) {
+        new cdk.aws_s3_deployment.BucketDeployment(this, "AgentBucketScript", {
           sources: [
             cdk.aws_s3_deployment.Source.asset(
                 "lib/assets/scripts/research_agent"
@@ -249,7 +249,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
         serviceToken: submitBatchAnalysisJobProvider.serviceToken,
       });
 
-      if (props.enableResearchAgent.valueAsString === 'true') {
+      if (cdk.Fn.conditionEquals(props.enableResearchAgentParam.valueAsString, 'true')) {
 
         // Add another lambda that invokes the file submit_agent_job.py
         const submitAgentJobLambda = new lambda.Function(this, 'QBusinessSubmitAgentJobLambda', {

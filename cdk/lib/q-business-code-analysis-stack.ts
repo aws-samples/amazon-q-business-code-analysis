@@ -66,6 +66,7 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
     const projectName = projectNameParam.valueAsString;
     const sshUrl = sshUrlParam.valueAsString;
     const sshKeyName = sshKeyNameParam.valueAsString;
+    // Boolean evaluations
 
     const qAppName = projectName;
     const idcArn = idcArnParam.valueAsString;
@@ -113,7 +114,7 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
 
     // Neptune Graph generation
     var neptuneGraphId = '';
-    if (enableGraphParam.valueAsString === 'true') {
+    if (cdk.Fn.conditionEquals(enableGraphParam.valueAsString, 'true')) {
       const neptuneConstruct = new AmazonNeptuneConstruct(this, 'NeptuneConstruct', {
         qAppName: qAppName
       });
@@ -131,7 +132,7 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       boto3Layer: layer,
       sshUrl: sshUrl,
       sshKeyName: sshKeyName,
-      enableResearchAgent: enableResearchAgentParam,
+      enableResearchAgentParam: enableResearchAgentParam,
       enableGraphParam: enableGraphParam,
       neptuneGraphId: neptuneGraphId,
     });
