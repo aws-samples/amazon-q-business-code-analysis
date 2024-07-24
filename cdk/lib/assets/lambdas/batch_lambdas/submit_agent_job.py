@@ -4,6 +4,34 @@ import datetime
 import boto3
 import time
 
+def lambda_handler(event, context):
+    # Check if the event is from API Gateway
+    print(json.dumps(event))
+    if 'httpMethod' in json.dumps(event):
+        return handle_api_request(event, context)
+    else:
+        return on_event(event, context)
+
+def handle_api_request(event, context):
+    # Parse the goal from the request body
+    try:
+        body = json.loads(event['body'])
+        goal = body['goal']
+    except (KeyError, json.JSONDecodeError):
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': 'Invalid request body. Must include a "goal" field.'})
+        }
+
+    # Call the Batch job submission function with the new goal
+    physical_id = "LangChainAgentBatchJob"
+    result = submit_batch_job(goal, physical_id)
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'message': 'Batch job submitted successfully', 'result': result})
+    }
+
 def on_event(event, context):
     physical_id = "PhysicalIdAmazonQCodeAnalysisApp"
     request_type = event['RequestType']
@@ -16,7 +44,6 @@ def on_event(event, context):
 def on_update(event, physical_id):
     props = event["ResourceProperties"]
     print("update resource %s with props %s" % (physical_id, props))
-
     return { 'PhysicalResourceId': physical_id }
 
 def on_delete(event, physical_id):
@@ -24,6 +51,10 @@ def on_delete(event, physical_id):
     return { 'PhysicalResourceId': physical_id }
 
 def on_create(event, physical_id):
+    initial_goal = os.environ['INITIAL_GOAL']
+    return submit_batch_job(initial_goal, physical_id)
+
+def submit_batch_job(goal, physical_id):
     aws_batch = boto3.client('batch')
     batch_job_queue = os.environ.get("BATCH_JOB_QUEUE")
     batch_job_definition = os.environ.get("BATCH_JOB_DEFINITION")
@@ -33,6 +64,7 @@ def on_create(event, physical_id):
     q_app_name = os.environ.get("Q_APP_NAME")
     ssh_url = os.environ.get("SSH_URL")
     ssh_key_name = os.environ.get("SSH_KEY_NAME")
+    agent_knowledge_bucket = os.environ.get("AGENT_KNOWLEDGE_BUCKET")
     q_app_id = os.environ['AMAZON_Q_APP_ID']
     q_app_index = os.environ['Q_APP_INDEX']
     q_app_data_source_id = os.environ['Q_APP_DATA_SOURCE_ID']
@@ -83,10 +115,18 @@ def on_create(event, physical_id):
         {
             "name": "ENABLE_GRAPH",
             "value": enable_graph
+        },
+        {
+            "name": "S3_BUCKET",
+            "value": s3_bucket
+        },
+        {
+            "name": "AGENT_KNOWLEDGE_BUCKET",
+            "value": agent_knowledge_bucket
         }
         ],
         "command": [
-            "sh","-c",f"yum -y install python-pip && pip install awscli boto3 pandas langchain langchain-community langchain-aws pexpect && aws s3 cp --recursive s3://{s3_bucket}/research-agent/ . && python3 main.py"
+            "sh","-c",f"apt-get update && apt -y install python3-venv git-all && python3  -m venv .venv && . .venv/bin/activate && pip install awscli boto3 pandas langchain langchain-community langchain-aws pexpect && aws s3 cp --recursive s3://{s3_bucket}/research-agent/ . && python3 main.py --goal '{goal}'"
         ]
     }
 
