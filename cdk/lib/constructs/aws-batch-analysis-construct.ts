@@ -4,6 +4,7 @@ import * as batch from "aws-cdk-lib/aws-batch";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 
 export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly qAppName: string;
@@ -18,6 +19,8 @@ export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly neptuneGraphId: string;
   readonly enableGraphParam: cdk.CfnParameter;
   readonly enableResearchAgentParam: cdk.CfnParameter;
+  readonly userPool: cognito.UserPool;
+  readonly cognitoDomain: string;
 }
 
 const defaultProps: Partial<AwsBatchAnalysisProps> = {};
@@ -305,11 +308,29 @@ export class AwsBatchAnalysisConstruct extends Construct {
           description: 'API Gateway for submitting agent job',
         });
 
+        const auth = new cdk.aws_apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
+          cognitoUserPools: [props.userPool],
+        });
+
+        // Define a request validator
+        const requestValidator = new cdk.aws_apigateway.RequestValidator(this, 'RequestValidator', {
+          restApi: agentApi,
+          validateRequestBody: true
+        });
+
         // Create a resource and method
         const agentResource = agentApi.root.addResource('agent-goal');
         const agentIntegration = new cdk.aws_apigateway.LambdaIntegration(submitAgentJobLambda);
 
+        const writeScope = 'repository/write';
+
         agentResource.addMethod('POST', agentIntegration, {
+          authorizer: auth,
+          authorizationType: cdk.aws_apigateway.AuthorizationType.COGNITO,
+          authorizationScopes: [writeScope],
+          requestParameters: {
+              'method.request.header.Authorization': true
+            },
           methodResponses: [
             {
               statusCode: '200',
@@ -332,6 +353,8 @@ export class AwsBatchAnalysisConstruct extends Construct {
             BUCKET_NAME: s3Bucket.bucketName,
             API_ID: agentApi.restApiId,
             STAGE_NAME: agentApi.deploymentStage.stageName,
+            AUTH_URL: props.cognitoDomain + '/oauth2/authorize',
+            TOKEN_URL: props.cognitoDomain + '/oauth2/token',
           },
         });
 

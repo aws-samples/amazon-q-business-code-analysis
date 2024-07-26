@@ -7,6 +7,8 @@ exports.handler = async (event) => {
   const apiId = process.env.API_ID;
   const stageName = process.env.STAGE_NAME;
   const region = process.env.AWS_REGION;
+  const authUrl = process.env.AUTH_URL;
+  const tokenUrl = process.env.TOKEN_URL;
 
   const openApiSchema = {
     openapi: '3.0.3',
@@ -62,6 +64,29 @@ exports.handler = async (event) => {
         },
       },
     },
+    components: {
+      securitySchemes: {
+        oauth2: {
+          type: 'oauth2',
+          flows: {
+            authorizationCode: {
+              authorizationUrl: `${authUrl}`,
+              tokenUrl: `${tokenUrl}`,
+              scopes: {
+                "repository/write": "Write access to protected resources"
+              },
+            },
+          },
+        },
+      },
+    },
+    security: [
+      {
+        oauth2: [
+          "repository/write"
+        ]
+      }
+    ]
   };
 
   try {
