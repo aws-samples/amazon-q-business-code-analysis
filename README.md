@@ -21,6 +21,7 @@ We've made this easy by providing pre-built AWS CloudFormation templates that de
     2. `ProjectName`: The project name you want to use, i.e. Langchain-Agents.
     3. `GitRepositoryUrl`: The URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
     4. `IdcArn`: The ARN of the Identity Center you want to use to create the Amazon Q for Business application. You can find the ARN under Settings in the AWS Console under IAM Identity Center.
+    5. `CognitoDomainPrefix`: The unique cognito prefix identifier that you choose, which is then combined with a fixed AWS Cognito domain that will be used for Authorization.
     5. `SshSecretName`: (Optional) The name of the secret in Secrets Manager that contains the SSH key for the repository. If none just leave this as the default 'None.'
     6. `SshUrl`: (Optional) The SSH URL of the repository you want to analyze, i.e. git@github.com:aws-samples/langchain-agents.git. If none just leave this as the default 'None.'
 
@@ -53,19 +54,19 @@ You can deploy the stack using the following command. Add the following paramete
 1.	ProjectName: The project name you want to use, i.e. Langchain-Agents.
 2.	RepositoryUrl: The git URL of the repository you want to analyze, i.e. https://github.com/aws-samples/langchain-agents.git.
 3. IdcArn: The ARN of the Identity Center you want to use to create the Amazon Q for Business application. You can find the ARN under Settings in the AWS Console under IAM Identity Center.
-
+4. CognitoDomainPrefix: The unique cognito prefix identifier that you choose, which is then combined with a fixed AWS Cognito domain that will be used for Authorization.
 Note, you only need to bootstrap once. If you have already bootstrapped your account, you can skip the bootstrap command.
 
 ```bash
-npx cdk bootstrap --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters <identity_center_arn> --require-approval never
+npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters IdcArn=<identity_center_arn> --parameters CognitoDomainPrefix=<uniqueDomainPrefix> --require-approval never
 
-npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters  IdcArn=<identity_center_arn> --require-approval never
+npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters  IdcArn=<identity_center_arn> --parameters CognitoDomainPrefix=<uniqueDomainPrefix> --require-approval never
 ```
 
 Here is an example of how to deploy the stack with parameters.
 
 ```bash
-npx cdk deploy --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters ProjectName=Langchain-Agents --require-approval never
+npx cdk deploy --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters ProjectName=Langchain-Agents --parameters IdcArn=arn:aws:sso:::instance/ssoins-your-idc-id --parameters CognitoDomainPrefix=sampleuniqueprefix --require-approval never
 ```
 
 ### 2. Access the Amazon Q for Business application

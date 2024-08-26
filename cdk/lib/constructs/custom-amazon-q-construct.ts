@@ -16,7 +16,9 @@ export class CustomQBusinessConstruct extends Construct {
   public appId: string;
   public indexId: string;
   public dataSourceId: string;
-
+  public webEndpoint: string;
+  public appArn: string;
+  
   constructor(scope: Construct, name: string, props: CustomResourceProps) {
     super(scope, name);
 
@@ -124,8 +126,9 @@ export class CustomQBusinessConstruct extends Construct {
     });
 
     this.appId = cdk_app.ref;
+    this.appArn = cdk_app.attrApplicationArn;
     this.indexId = indexId;
     this.dataSourceId = data_source_id;
-
+    this.webEndpoint = web_experience.attrDefaultEndpoint;
   }
 }

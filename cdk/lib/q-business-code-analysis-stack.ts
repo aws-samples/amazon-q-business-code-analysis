@@ -4,6 +4,7 @@ import { CustomQBusinessConstruct } from './constructs/custom-amazon-q-construct
 import { QIamRoleConstruct } from './constructs/q-iam-role-construct';
 import { AwsBatchAnalysisConstruct } from './constructs/aws-batch-analysis-construct';
 import { AmazonNeptuneConstruct } from './constructs/amazon-neptune-construct';
+import { CognitoConstruct } from './constructs/cognito-construct';
 
 export class QBusinessCodeAnalysisStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -61,11 +62,19 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       default: 'false'
     });
 
+    // The cognito domain prefix that satisfies regular expression pattern: [a-zA-Z0-9][a-zA-Z0-9_-]*
+    const cognitoDomainPrefixParam = new cdk.CfnParameter(this, 'CognitoDomainPrefix', {
+      type: 'String',
+      description: 'The cognito domain prefix.',
+      allowedPattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]*$'
+    });
+
     // Check if the repository url is provided
     const repositoryUrl = repositoryUrlParam.valueAsString;
     const projectName = projectNameParam.valueAsString;
     const sshUrl = sshUrlParam.valueAsString;
     const sshKeyName = sshKeyNameParam.valueAsString;
+    const cognitoDomainPrefix = cognitoDomainPrefixParam.valueAsString;
     // Boolean evaluations
 
     const qAppName = projectName;
@@ -88,7 +97,7 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       boto3Layer: layer,
       idcArn: idcArn
     });
-
+    
     qBusinessConstruct.node.addDependency(layer);
     qBusinessConstruct.node.addDependency(qIamRole);
 
@@ -112,14 +121,23 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       description: 'Amazon Q Business Application Data Source Id',
     });
 
+    // Cognito
+    const cognitoConstruct = new CognitoConstruct(this, 'CognitoConstruct', { 
+      appArn: qBusinessConstruct.appArn,
+      webEndpoint: qBusinessConstruct.webEndpoint,
+      cognitoDomainPrefix: cognitoDomainPrefix
+    });
+
+    cognitoConstruct.node.addDependency(qBusinessConstruct);
+
     // Neptune Graph generation
     var neptuneGraphId = '';
-    if (cdk.Fn.conditionEquals(enableGraphParam.valueAsString, 'true')) {
-      const neptuneConstruct = new AmazonNeptuneConstruct(this, 'NeptuneConstruct', {
-        qAppName: qAppName
-      });
-      neptuneGraphId = neptuneConstruct.graph.attrGraphId;
-    }
+    // if (cdk.Fn.conditionEquals(enableGraphParam.valueAsString, 'true')) {
+    //   const neptuneConstruct = new AmazonNeptuneConstruct(this, 'NeptuneConstruct', {
+    //     qAppName: qAppName
+    //   });
+    //   neptuneGraphId = neptuneConstruct.graph.attrGraphId;
+    // }
 
     // AWS Batch to run the code analysis
     const awsBatchConstruct = new AwsBatchAnalysisConstruct(this, 'AwsBatchConstruct', {
@@ -135,9 +153,12 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       enableResearchAgentParam: enableResearchAgentParam,
       enableGraphParam: enableGraphParam,
       neptuneGraphId: neptuneGraphId,
+      cognitoDomain: cognitoConstruct.cognitoDomain,
+      userPool: cognitoConstruct.userPool,
+      cognitoSecretAccessRole: cognitoConstruct.secretAccessRole,
+      cognitoSecret: cognitoConstruct.secret
     });
 
     awsBatchConstruct.node.addDependency(qBusinessConstruct);
-
   }
 }

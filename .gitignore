@@ -6,3 +6,4 @@ cdk/cdk.out
 cdk/cloudformation
 .DS_Store
 .*
+deploy-command.sh
