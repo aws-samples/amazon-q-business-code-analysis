@@ -294,17 +294,17 @@ export class AwsBatchAnalysisConstruct extends Construct {
           memorySize: 512,
         });
 
-        submitAgentJobLambda.node.addDependency(jobDefinition);
+        // submitAgentJobLambda.node.addDependency(jobDefinition);
 
-        // Custom resource to invoke the lambda
-        const submitAgentJobLambdaProvider = new cdk.custom_resources.Provider(this, 'QBuinessSubmitAgentJobLambdaProvider', {
-          onEventHandler: submitAgentJobLambda,
-          logRetention: cdk.aws_logs.RetentionDays.ONE_DAY,
-        });
+        // // Custom resource to invoke the lambda
+        // const submitAgentJobLambdaProvider = new cdk.custom_resources.Provider(this, 'QBuinessSubmitAgentJobLambdaProvider', {
+        //   onEventHandler: submitAgentJobLambda,
+        //   logRetention: cdk.aws_logs.RetentionDays.ONE_DAY,
+        // });
 
-        new cdk.CustomResource(this, 'QBusinessSubmitAgentJobLambdaCustomResource', {
-          serviceToken: submitAgentJobLambdaProvider.serviceToken,
-        });
+        // new cdk.CustomResource(this, 'QBusinessSubmitAgentJobLambdaCustomResource', {
+        //   serviceToken: submitAgentJobLambdaProvider.serviceToken,
+        // });
 
         // Add API Gateway that invokes Lambda to submit agent job
         const agentApi = new cdk.aws_apigateway.RestApi(this, 'QBusinessAgentApi', {
