@@ -26,7 +26,7 @@ export interface AwsBatchAnalysisProps extends cdk.StackProps {
 const defaultProps: Partial<AwsBatchAnalysisProps> = {};
 
 export class AwsBatchAnalysisConstruct extends Construct {
-
+    public readonly apiUrl: string;
     constructor(scope: Construct, name: string, props: AwsBatchAnalysisProps) {
       super(scope, name);
 
@@ -307,7 +307,9 @@ export class AwsBatchAnalysisConstruct extends Construct {
           restApiName: 'QBusinessAgentApi',
           description: 'API Gateway for submitting agent job',
         });
-
+        
+        this.apiUrl = agentApi.url;
+        
         const auth = new cdk.aws_apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
           cognitoUserPools: [props.userPool],
         });

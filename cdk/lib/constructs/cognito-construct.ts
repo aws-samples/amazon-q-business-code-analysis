@@ -67,7 +67,7 @@ export class CognitoConstruct extends Construct {
         const clientSecret = this.CognitoUserPoolClientSecret(this.userPool, this.userPoolClient);
         
         this.secret = new secretsmanager.Secret(this, 'OAuthSecret', {
-            secretName: 'OAuthSecret',
+            secretName: 'CognitoOAuthCredentialsSecret',
             generateSecretString: {
                 secretStringTemplate: JSON.stringify({
                     client_id: this.userPoolClient.userPoolClientId,

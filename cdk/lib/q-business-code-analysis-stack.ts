@@ -163,7 +163,9 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
     const customPluginConstruct = new AmazonQPluginConstruct(this, 'CustomPluginConstruct', {
        appId: qBusinessConstruct.appId,
        secretAccessRole: cognitoConstruct.secretAccessRole,
-       secret: cognitoConstruct.secret
+       secret: cognitoConstruct.secret,
+       apiUrl: awsBatchConstruct.apiUrl,
+       cognitoDomain: cognitoConstruct.cognitoDomain
     });
 
     customPluginConstruct.node.addDependency(cognitoConstruct);
