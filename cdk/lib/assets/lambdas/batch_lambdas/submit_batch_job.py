@@ -78,7 +78,7 @@ def on_create(event, physical_id):
         }
         ],
         "command": [
-            "sh","-c",f"yum -y install python-pip git && pip install boto3 awscli GitPython && aws s3 cp s3://{s3_bucket}/code-processing/generate_documentation_and_ingest_code.py . && python3 generate_documentation_and_ingest_code.py"
+            "sh","-c",f"apt-get update && apt -y install python3-venv git-all && python3  -m venv .venv && . .venv/bin/activate && pip install awscli boto3 GitPython && aws s3 cp s3://{s3_bucket}/code-processing/generate_documentation_and_ingest_code.py . && python3 generate_documentation_and_ingest_code.py"
         ]
     }
 
