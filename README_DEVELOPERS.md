@@ -37,7 +37,7 @@ If you want to build and publish your own template, to your own S3 bucket, so th
 
 Navigate into the project root directory and, in a bash shell, run:
 
-1. `./publish.sh <cfn_bucket_basename> <cfn_prefix> <us-east-1 | us-west-2>`.  
+1. `./publish.sh <cfn_bucket_basename> <cfn_prefix> <us-east-1 | us-west-2>`<public>
   This:
     - checks your system dependendencies for required packages (see Dependencies above)
     - bootstraps your cdk environment if needed
@@ -46,7 +46,11 @@ Navigate into the project root directory and, in a bash shell, run:
     - optionally add a final parameter `public` if you want to make the templates public. Note: your bucket and account must be configured not to Block Public Access using new ACLs.
 
 That's it! There's just one step.
-  
+
+Example: 
+./publish.sh amazon-q-business-code-analysis one-click us-east-1 public
+
+
 When completed, it displays the CloudFormation templates S3 URLs and 1-click URLs for launching the stack creation in CloudFormation console, e.g.:
 ```
 OUTPUTS

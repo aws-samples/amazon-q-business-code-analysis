@@ -22,6 +22,15 @@ REGION=$3
 [ -z "$REGION" ] && echo "Region is a required parameter. Usage $USAGE" && exit 1
 export AWS_DEFAULT_REGION=$REGION
 
+ACL=$4
+if [ "$ACL" == "public" ]; then
+  echo "Published S3 artifacts will be acessible by public (read-only)"
+  PUBLIC=true
+else
+  echo "Published S3 artifacts will NOT be acessible by public."
+  PUBLIC=false
+fi
+
 # Remove trailing slash from prefix if needed, and append VERSION
 VERSION=$(jq -r '.version' package.json)
 [[ "${PREFIX}" == */ ]] && PREFIX="${PREFIX%?}"
@@ -29,7 +38,7 @@ PREFIX_AND_VERSION=${PREFIX}/${VERSION}
 echo $PREFIX_AND_VERSION
 
 # Append region to bucket basename
-BUCKET=${BUCKET_BASENAME}-${REGION}
+BUCKET=${REGION}-${BUCKET_BASENAME}
 
 echo "Running precheck..."
 ./bin/precheck.sh
@@ -66,6 +75,17 @@ aws s3 rm s3://${BUCKET}/${CDKTEMPLATE} || exit 1
 template="https://s3.${REGION}.amazonaws.com/${BUCKET}/${MAIN_TEMPLATE}"
 echo "Validating converted template: $template"
 aws cloudformation validate-template --template-url $template > /dev/null || exit 1
+
+if $PUBLIC; then
+  echo "Setting public read ACLs on published artifacts"
+  files=$(aws s3api list-objects --bucket us-east-1-amazon-q-business-code-analysis --query "(Contents)[].[Key]" --output text --region us-east-1 | grep ".zip\|.json")
+  for file in $files 
+  do
+    echo "Setting public-read acl for file ${file}"
+    aws s3api put-object-acl --acl public-read --bucket us-east-1-amazon-q-business-code-analysis --key ${file} --region us-east-1
+  done
+fi
+
 
 echo "OUTPUTS"
 echo Template URL: $template
