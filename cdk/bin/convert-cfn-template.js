@@ -2,6 +2,7 @@ const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const fs = require('fs');
 const path = require('path');
 const JSZip = require('jszip');
+const archiver = require('archiver');
 
 // Read command line arguments
 const templateName = process.argv[2];
@@ -27,13 +28,51 @@ async function main() {
     const template = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
 
     // Identify all Lambda functions in the template
+    console.log('Identifying Layers ...');
+    const layers = identifyLayers(template);
+
+    // Upload layer assets from cdk.out to new S3 location (they already zipped)
+    for (let layer of layers) {
+      const sourceAsset = path.join('cdk.out', `asset.${layer.codeAssetS3Key}`);
+      console.log(`Uploading layer asset: ${layer.codeAssetS3Key} from ${sourceAsset}`);
+
+      await uploadAsset(
+        sourceAsset,
+        destinationBucket,
+        destinationPrefix,
+        layer.codeAssetS3Key
+      );
+    }
+
+    // Identify customcdk buckets in template
+    console.log('Identifying CustomCDK Buckets...');
+    const ccdkBuckets = identifyBuckets(template);
+
+    // Zip and upload code assets from cdk.out to new S3 location
+    for (let bucket of ccdkBuckets) {
+      const assetHash = bucket.SourceKey.split('.')[0];
+      const sourceDir = path.join('cdk.out', `asset.${assetHash}`);
+      const outFile = `${path.join('cdk.out', `asset${assetHash}`)}.zip`;
+      console.log(`Zipping ${sourceDir} and custom bucket asset: ${assetHash}, to zip file ${outFile}`);
+
+      zipDirectory(sourceDir, outFile);
+      console.log(`uploading asset ${outFile} to bucket ${destinationBucket} file ${assetHash}.zip`)
+      await uploadAsset(
+        outFile,
+        destinationBucket,
+        destinationPrefix,
+        `${assetHash}.zip`
+      );
+    }
+
+    // Identify all Lambda functions in the template
     console.log('Identifying Lambda functions...');
     const lambdas = identifyLambdas(template);
 
     // Zip and upload code assets from cdk.out to new S3 location
     for (let lambda of lambdas) {
       console.log(`Zipping and uploading lambda code asset: ${lambda.codeAssetS3Key}`);
-      const zippedFilePath = await zipAsset(lambda);
+      const zippedFilePath = await zipAsset(lambda.codeAssetS3Key);
       await uploadAsset(
         zippedFilePath,
         destinationBucket,
@@ -46,12 +85,15 @@ async function main() {
     // Update template with new code asset paths
     console.log('Updating CloudFormation template with new code asset paths...');
     updateTemplateLambdaAssetPaths(template, lambdas, destinationBucket, destinationPrefix);
+    updateTemplateLayerAssetPaths(template, layers, destinationBucket, destinationPrefix);
+    updateTemplateCustCDKBucketAssetPaths(template, ccdkBuckets, destinationBucket, destinationPrefix);
 
-    // Modify Lambda roles to reference AppId parameter
-    //console.log('Updating CloudFormation template with new resource ARNs...');
-    //updateTemplateLambdaRolePermissions(template, lambdas);
+    // Fix up customCDK bucket IAM policies
+    console.log('Updating remaining cdk bucket references...');
+    updateTemplateCDKPolicies(template, destinationBucket);
+   
 
-    // Remove remaining CDK vestiges
+     // Remove remaining CDK vestiges
     delete template.Parameters.BootstrapVersion;
     delete template.Rules.CheckBootstrapVersion;
 
@@ -84,6 +126,40 @@ async function main() {
   }
 }
 
+function identifyCDKPolicies(template) {
+  let policies = [];
+  for (let [key, value] of Object.entries(template.Resources)) { 
+    if (value.Type === 'AWS::IAM::Policy') { // && value.Properties.PolicyDocument.Resource) {
+      resources = value.Properties.PolicyDocument.Statement;
+      console.log(`Found IAM Policy: Document resource ${key}`);
+      //resources.forEach((resource) => {
+      //    console.log(`Resource ${resource}`)
+      //  }
+     // )
+      //policies.push({
+      //  resourceName: key,
+      //  SourceKey: value.Properties.SourceObjectKeys[0]
+      //});
+    }
+  }
+  return policies;
+}
+
+
+function identifyBuckets(template) {
+  let buckets = [];
+  for (let [key, value] of Object.entries(template.Resources)) { 
+    if (value.Type === 'Custom::CDKBucketDeployment' && value.Properties?.SourceObjectKeys) {
+      console.log(`Found cdk custom bucket: resource ${key}`);
+      buckets.push({
+        resourceName: key,
+        SourceKey: value.Properties.SourceObjectKeys[0]
+      });
+    }
+  }
+  return buckets;
+}
+
 function identifyLambdas(template) {
   let lambdas = [];
   for (let [key, value] of Object.entries(template.Resources)) {
@@ -99,8 +175,22 @@ function identifyLambdas(template) {
   return lambdas;
 }
 
-async function zipAsset(lambda) {
-  const assetHash = lambda.codeAssetS3Key.split('.')[0];
+function identifyLayers(template) {
+  let layers = [];
+  for (let [key, value] of Object.entries(template.Resources)) {
+    if (value.Type === 'AWS::Lambda::LayerVersion' && value.Properties.Content?.S3Key) {
+      console.log(`Found layer: resource ${key} with s3key ${value.Properties.Content.S3Key}`);
+      layers.push({
+        resourceName: key,
+        codeAssetS3Key: value.Properties.Content.S3Key
+      });
+    }
+  }
+  return layers;
+}
+
+async function zipAsset(S3Key) {
+  const assetHash = S3Key.split('.')[0];
   const sourceDir = path.join('cdk.out', `asset.${assetHash}`);
   const outPath = `${path.join('cdk.out', assetHash)}.zip`;
 
@@ -123,6 +213,21 @@ async function zipAsset(lambda) {
 
   return outPath;
 }
+
+
+function zipDirectory(sourceDir, outFile) {
+  const archive = archiver('zip', { zlib: { level: 9 }});
+  const stream = fs.createWriteStream(outFile);
+  console.log(`Zipping folder ${sourceDir}...`)
+
+  stream.on('close', function() { console.log('done') });
+  archive.on('error', function(err) { console.log(`error ${err.message}`); throw err });
+  
+  archive.pipe(stream);
+  
+  archive.directory(sourceDir, '/').finalize();
+}
+
 
 async function uploadAsset(zippedFilePath, destinationBucket, destinationPrefix, originalKey) {
   const fileStream = fs.createReadStream(zippedFilePath);
@@ -150,6 +255,38 @@ function updateTemplateLambdaAssetPaths(template, lambdas, destinationBucket, de
     lambdaResource.Properties.Code.S3Key = `${path.basename(lambda.codeAssetS3Key)}`; // ${destinationPrefix}/
   }
 }
+
+function updateTemplateLayerAssetPaths(template, layers, destinationBucket, destinationPrefix) {
+  for (let layer of layers) {
+    let layerResource = template.Resources[layer.resourceName];
+    layerResource.Properties.Content.S3Bucket = destinationBucket;
+    layerResource.Properties.Content.S3Key = `${path.basename(layer.codeAssetS3Key)}`; // ${destinationPrefix}/
+  }
+}
+
+function updateTemplateCustCDKBucketAssetPaths(template, ccdkBuckets, destinationBucket, destinationPrefix) {
+  for (let bucket of ccdkBuckets) {
+    let bucketResource = template.Resources[bucket.resourceName];
+    bucketResource.Properties.SourceBucketNames[0] = destinationBucket;
+    bucketResource.Properties.SourceObjectKeys[0] = `${path.basename(bucket.SourceKey)}`; // ${destinationPrefix}/
+  }
+}
+
+  // Helper function to recursively traverse and update the JSON
+  function updateTemplateCDKPolicies(template, destinationBucket) {
+    for (let key in template) {
+      //console.log(`update buckets key=${key}`)
+      if (typeof template[key] === 'object' && template[key] !== null) {
+        if (template[key].hasOwnProperty('Fn::Sub') && template[key]['Fn::Sub'].includes("cdk-")) {
+          console.log(`check for s3 bucket updating...${template[key]['Fn::Sub']}`);
+
+          template[key]['Fn::Sub'] = destinationBucket;
+        } else {
+          updateTemplateCDKPolicies(template[key], destinationBucket);
+        }
+      }
+    }
+  }
 
 function replaceQAppIdResourceArn(role, arn) {
   const amazonQAppResourceArn = {

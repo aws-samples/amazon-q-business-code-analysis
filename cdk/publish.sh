@@ -10,7 +10,7 @@
 # Stop the publish process on failures
 set -e
 
-USAGE="$0 <cfn_bucket_basename> <cfn_prefix> <region>"
+USAGE="$0 <cfn_bucket_basename> <cfn_prefix> <region> <public>"
 
 BUCKET_BASENAME=$1
 [ -z "$BUCKET_BASENAME" ] && echo "Cfn bucket name is a required parameter. Usage $USAGE" && exit 1
@@ -82,7 +82,7 @@ if $PUBLIC; then
   for file in $files 
   do
     echo "Setting public-read acl for file ${file}"
-    aws s3api put-object-acl --acl public-read --bucket us-east-1-amazon-q-business-code-analysis --key ${file} --region us-east-1
+    aws s3api put-object-acl --acl public-read --bucket us-east-1-amazon-q-business-code-analysis --key ${file} --region $REGION
   done
 fi
 
