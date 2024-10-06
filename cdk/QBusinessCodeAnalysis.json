@@ -1,0 +1,4710 @@
+{
+  "Description": "(uksb-1tupboc55) - Amazon Q Business Code Analysis stack (from S3 template)",
+  "Parameters": {
+    "ProjectName": {
+      "Type": "String",
+      "AllowedPattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*$",
+      "Description": "The project name, for example langchain-agents."
+    },
+    "RepositoryUrl": {
+      "Type": "String",
+      "AllowedPattern": "^https?://.+(.git)$",
+      "Description": "The Git URL of the repository to scan and ingest into Amazon Q Business. Note it should end with .git, i.e. https://github.com/aws-samples/langchain-agents.git"
+    },
+    "SshUrl": {
+      "Type": "String",
+      "Default": "None",
+      "Description": "Optional. The SSH URL of the repository to scan and ingest into Amazon Q Business. Note it should end with .git, i.e. git@github.com:aws-samples/langchain-agents.git"
+    },
+    "SshSecretName": {
+      "Type": "String",
+      "Default": "None",
+      "Description": "Optional. The name of the SSH key to use to access the repository. It should be the name of the SSH key stored in the AWS Systems Manager Parameter Store."
+    },
+    "IdcArn": {
+      "Type": "String",
+      "AllowedPattern": "^arn:aws[a-zA-Z0-9-]*:sso:[a-z0-9-]*:[0-9]{12}:instance/.*$|^arn:aws:sso:::instance/.*$",
+      "Description": "The arn of Identity Center in the same region that the Q application is going to be deployed"
+    },
+    "EnableGraph": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Description": "Enable the Neptune Graph. Set to true to enable the graph, false to disable it."
+    },
+    "EnableResearchAgent": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Description": "Enable the Research Agent. Set to true to enable the research agent, false to disable it."
+    },
+    "CognitoDomainPrefix": {
+      "Type": "String",
+      "AllowedPattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]*$",
+      "Description": "The cognito domain prefix."
+    }
+  },
+  "Resources": {
+    "QIamConstructQIamRoleApp9A52AB9C": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "qbusiness.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": "cloudwatch:PutMetricData",
+                  "Condition": {
+                    "StringEquals": {
+                      "cloudwatch:namespace": "AWS/QBusiness"
+                    }
+                  },
+                  "Effect": "Allow",
+                  "Resource": "*"
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "AmazonQApplicationPutMetricDataPermission"
+          },
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": "logs:DescribeLogGroups",
+                  "Effect": "Allow",
+                  "Resource": "*"
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "AmazonQApplicationDescribeLogGroupsPermission"
+          },
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": "logs:CreateLogGroup",
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:logs:",
+                        {
+                          "Ref": "AWS::Region"
+                        },
+                        ":",
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        ":log-group:/aws/qbusiness/*"
+                      ]
+                    ]
+                  }
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "AmazonQApplicationCreateLogGroupPermission"
+          },
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:DescribeLogStreams",
+                    "logs:PutLogEvents"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:logs:",
+                        {
+                          "Ref": "AWS::Region"
+                        },
+                        ":",
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        ":log-group:/aws/qbusiness/*:log-stream:*"
+                      ]
+                    ]
+                  }
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "AmazonQApplicationLogStreamPermission"
+          },
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "qbusiness:CancelSubscription",
+                    "qbusiness:CreateSubscription",
+                    "qbusiness:ListSubscriptions",
+                    "qbusiness:UpdateSubscription",
+                    "user-subscriptions:CommitClaim",
+                    "user-subscriptions:CreateClaim",
+                    "user-subscriptions:UpdateClaim"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:qbusiness:",
+                        {
+                          "Ref": "AWS::Region"
+                        },
+                        ":",
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        ":application/*"
+                      ]
+                    ]
+                  }
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "QBusinessUserSubscriptionPermissions"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/QIamConstruct/QIamRoleApp/Resource"
+      }
+    },
+    "QIamConstructQIamRoleWebExpFEA4E8BB": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole",
+                "sts:SetContext"
+              ],
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "application.qbusiness.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "qbusiness:Chat",
+                    "qbusiness:ChatSync",
+                    "qbusiness:DeleteConversation",
+                    "qbusiness:GetApplication",
+                    "qbusiness:GetChatControlsConfiguration",
+                    "qbusiness:GetWebExperience",
+                    "qbusiness:ListConversations",
+                    "qbusiness:ListMessages",
+                    "qbusiness:ListPlugins",
+                    "qbusiness:PutFeedback"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "arn:aws:qbusiness:",
+                        {
+                          "Ref": "AWS::Region"
+                        },
+                        ":",
+                        {
+                          "Ref": "AWS::AccountId"
+                        },
+                        ":application/*"
+                      ]
+                    ]
+                  }
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "QBusinessConversationPermission"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/QIamConstruct/QIamRoleWebExp/Resource"
+      }
+    },
+    "layerWithQBusinessB00C1A25": {
+      "Type": "AWS::Lambda::LayerVersion",
+      "Properties": {
+        "CompatibleRuntimes": [
+          "python3.12"
+        ],
+        "Content": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "7bc54541ac981c01c7a77cdfef53c80d792f06183e2282682cb52141f4bb59dc.zip"
+        },
+        "Description": "Boto3 v1.34.109"
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/layerWithQBusiness/Resource",
+        "aws:asset:path": "asset.7bc54541ac981c01c7a77cdfef53c80d792f06183e2282682cb52141f4bb59dc.zip",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Content"
+      }
+    },
+    "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "DependsOn": [
+        "layerWithQBusinessB00C1A25",
+        "QIamConstructQIamRoleApp9A52AB9C",
+        "QIamConstructQIamRoleWebExpFEA4E8BB"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/QBusinessAppConstruct/QBusinessCustomLambdaRole/Resource"
+      }
+    },
+    "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "qbusiness:CreateApplication",
+                "qbusiness:CreateIndex",
+                "qbusiness:CreateRetriever",
+                "qbusiness:CreateWebExperience",
+                "qbusiness:DeleteApplication",
+                "qbusiness:DeleteIndex",
+                "qbusiness:DeleteRetriever",
+                "qbusiness:DeleteWebExperience",
+                "qbusiness:GetApplication",
+                "qbusiness:GetIndex",
+                "qbusiness:GetRetriever"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:qbusiness:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":application/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "sso:CreateApplication",
+                "sso:PutApplicationGrant",
+                "sso:UpdateApplication"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": "iam:PassRole",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "QIamConstructQIamRoleApp9A52AB9C",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "QIamConstructQIamRoleWebExpFEA4E8BB",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "Roles": [
+          {
+            "Ref": "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133"
+          }
+        ]
+      },
+      "DependsOn": [
+        "layerWithQBusinessB00C1A25",
+        "QIamConstructQIamRoleApp9A52AB9C",
+        "QIamConstructQIamRoleWebExpFEA4E8BB"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/QBusinessAppConstruct/QBusinessCustomLambdaRole/DefaultPolicy/Resource"
+      }
+    },
+    "QBusinessAppConstructQBusinessAppA9B72941": {
+      "Type": "AWS::QBusiness::Application",
+      "Properties": {
+        "AttachmentsConfiguration": {
+          "AttachmentsControlMode": "ENABLED"
+        },
+        "Description": "Amazon Q Business Application",
+        "DisplayName": {
+          "Ref": "ProjectName"
+        },
+        "IdentityCenterInstanceArn": {
+          "Ref": "IdcArn"
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "QIamConstructQIamRoleApp9A52AB9C",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "layerWithQBusinessB00C1A25",
+        "QIamConstructQIamRoleApp9A52AB9C",
+        "QIamConstructQIamRoleWebExpFEA4E8BB"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/QBusinessAppConstruct/QBusinessApp"
+      }
+    },
+    "QBusinessAppConstructQBusinessIndexF49BC9C6": {
+      "Type": "AWS::QBusiness::Index",
+      "Properties": {
+        "ApplicationId": {
+          "Ref": "QBusinessAppConstructQBusinessAppA9B72941"
+        },
+        "CapacityConfiguration": {
+          "Units": 1
+        },
+        "Description": "Amazon Q Business Index",
+        "DisplayName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "ProjectName"
+              },
+              "-index"
+            ]
+          ]
+        },
+        "Type": "STARTER"
+      },
+      "DependsOn": [
+        "layerWithQBusinessB00C1A25",
+        "QIamConstructQIamRoleApp9A52AB9C",
+        "QIamConstructQIamRoleWebExpFEA4E8BB"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/QBusinessAppConstruct/QBusinessIndex"
+      }
+    },
+    "QBusinessAppConstructQBusinessRetrieverCA6FF5EC": {
+      "Type": "AWS::QBusiness::Retriever",
+      "Properties": {
+        "ApplicationId": {
+          "Ref": "QBusinessAppConstructQBusinessAppA9B72941"
+        },
+        "Configuration": {
+          "NativeIndexConfiguration": {
+            "IndexId": {
+              "Fn::Select": [
+                1,
+                {
+                  "Fn::Split": [
+                    "|",
+                    {
+                      "Ref": "QBusinessAppConstructQBusinessIndexF49BC9C6"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "DisplayName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "ProjectName"
+              },
+              "-retriever"
+            ]
+          ]
+        },
+        "Type": "NATIVE_INDEX"
+      },
+      "DependsOn": [
+        "layerWithQBusinessB00C1A25",
+        "QIamConstructQIamRoleApp9A52AB9C",
+        "QIamConstructQIamRoleWebExpFEA4E8BB"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/QBusinessAppConstruct/QBusinessRetriever"
+      }
+    },
+    "QBusinessAppConstructQBusinessDataSourceE468CE34": {
+      "Type": "AWS::QBusiness::DataSource",
+      "Properties": {
+        "ApplicationId": {
+          "Ref": "QBusinessAppConstructQBusinessAppA9B72941"
+        },
+        "Configuration": {
+          "type": "CUSTOM",
+          "version": "1.0.0"
+        },
+        "Description": "Amazon Q Business Data Source",
+        "DisplayName": {
+          "Fn::Join": [
+            "",
+            [
+              {
+                "Ref": "ProjectName"
+              },
+              "-data-source"
+            ]
+          ]
+        },
+        "IndexId": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::Split": [
+                "|",
+                {
+                  "Ref": "QBusinessAppConstructQBusinessIndexF49BC9C6"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "DependsOn": [
+        "layerWithQBusinessB00C1A25",
+        "QIamConstructQIamRoleApp9A52AB9C",
+        "QIamConstructQIamRoleWebExpFEA4E8BB"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/QBusinessAppConstruct/QBusinessDataSource"
+      }
+    },
+    "QBusinessAppConstructQBusinessWebExperienceB77DB931": {
+      "Type": "AWS::QBusiness::WebExperience",
+      "Properties": {
+        "ApplicationId": {
+          "Ref": "QBusinessAppConstructQBusinessAppA9B72941"
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "QIamConstructQIamRoleWebExpFEA4E8BB",
+            "Arn"
+          ]
+        },
+        "Title": {
+          "Ref": "ProjectName"
+        },
+        "WelcomeMessage": {
+          "Fn::Join": [
+            "",
+            [
+              "Welcome to Amazon Q Business ",
+              {
+                "Ref": "ProjectName"
+              },
+              "!"
+            ]
+          ]
+        }
+      },
+      "DependsOn": [
+        "layerWithQBusinessB00C1A25",
+        "QIamConstructQIamRoleApp9A52AB9C",
+        "QIamConstructQIamRoleWebExpFEA4E8BB"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/QBusinessAppConstruct/QBusinessWebExperience"
+      }
+    },
+    "CognitoConstructUserPool18663783": {
+      "Type": "AWS::Cognito::UserPool",
+      "Properties": {
+        "AccountRecoverySetting": {
+          "RecoveryMechanisms": [
+            {
+              "Name": "verified_email",
+              "Priority": 1
+            }
+          ]
+        },
+        "AdminCreateUserConfig": {
+          "AllowAdminCreateUserOnly": false
+        },
+        "AutoVerifiedAttributes": [
+          "email"
+        ],
+        "EmailVerificationMessage": "The verification code to your new account is {####}",
+        "EmailVerificationSubject": "Verify your new account",
+        "Policies": {
+          "PasswordPolicy": {
+            "MinimumLength": 8,
+            "RequireLowercase": true,
+            "RequireNumbers": true,
+            "RequireSymbols": true,
+            "RequireUppercase": true
+          }
+        },
+        "SmsVerificationMessage": "The verification code to your new account is {####}",
+        "UserPoolName": "CustomPluginUserPool",
+        "UsernameAttributes": [
+          "email"
+        ],
+        "VerificationMessageTemplate": {
+          "DefaultEmailOption": "CONFIRM_WITH_CODE",
+          "EmailMessage": "The verification code to your new account is {####}",
+          "EmailSubject": "Verify your new account",
+          "SmsMessage": "The verification code to your new account is {####}"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Retain",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/CognitoConstruct/UserPool/Resource"
+      }
+    },
+    "CognitoConstructUserPoolDomain72B20B7E": {
+      "Type": "AWS::Cognito::UserPoolDomain",
+      "Properties": {
+        "Domain": {
+          "Ref": "CognitoDomainPrefix"
+        },
+        "UserPoolId": {
+          "Ref": "CognitoConstructUserPool18663783"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/CognitoConstruct/UserPoolDomain/Resource"
+      }
+    },
+    "CognitoConstructUserPoolResourceServer85FC944B": {
+      "Type": "AWS::Cognito::UserPoolResourceServer",
+      "Properties": {
+        "Identifier": "repository",
+        "Name": "repository",
+        "Scopes": [
+          {
+            "ScopeDescription": "Write access",
+            "ScopeName": "write"
+          }
+        ],
+        "UserPoolId": {
+          "Ref": "CognitoConstructUserPool18663783"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/CognitoConstruct/UserPoolResourceServer/Resource"
+      }
+    },
+    "CognitoConstructRepositoryUserPoolClient2541A1F1": {
+      "Type": "AWS::Cognito::UserPoolClient",
+      "Properties": {
+        "AllowedOAuthFlows": [
+          "implicit",
+          "code"
+        ],
+        "AllowedOAuthFlowsUserPoolClient": true,
+        "AllowedOAuthScopes": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "Ref": "CognitoConstructUserPoolResourceServer85FC944B"
+                },
+                "/write"
+              ]
+            ]
+          }
+        ],
+        "CallbackURLs": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                {
+                  "Fn::GetAtt": [
+                    "QBusinessAppConstructQBusinessWebExperienceB77DB931",
+                    "DefaultEndpoint"
+                  ]
+                },
+                "oauth/callback"
+              ]
+            ]
+          }
+        ],
+        "GenerateSecret": true,
+        "SupportedIdentityProviders": [
+          "COGNITO"
+        ],
+        "UserPoolId": {
+          "Ref": "CognitoConstructUserPool18663783"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/CognitoConstruct/RepositoryUserPoolClient/Resource"
+      }
+    },
+    "CognitoConstructDescribeCognitoUserPoolClientFD18A32C": {
+      "Type": "Custom::DescribeCognitoUserPoolClient",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd22872D164C4C",
+            "Arn"
+          ]
+        },
+        "Create": {
+          "Fn::Join": [
+            "",
+            [
+              "{\"region\":\"",
+              {
+                "Ref": "AWS::Region"
+              },
+              "\",\"service\":\"CognitoIdentityServiceProvider\",\"action\":\"describeUserPoolClient\",\"parameters\":{\"UserPoolId\":\"",
+              {
+                "Ref": "CognitoConstructUserPool18663783"
+              },
+              "\",\"ClientId\":\"",
+              {
+                "Ref": "CognitoConstructRepositoryUserPoolClient2541A1F1"
+              },
+              "\"},\"physicalResourceId\":{\"id\":\"",
+              {
+                "Ref": "CognitoConstructRepositoryUserPoolClient2541A1F1"
+              },
+              "\"}}"
+            ]
+          ]
+        },
+        "InstallLatestAwsSdk": false
+      },
+      "DependsOn": [
+        "CognitoConstructDescribeCognitoUserPoolClientCustomResourcePolicy089C9A7D",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/CognitoConstruct/DescribeCognitoUserPoolClient/Resource/Default"
+      }
+    },
+    "CognitoConstructDescribeCognitoUserPoolClientCustomResourcePolicy089C9A7D": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "cognito-idp:DescribeUserPoolClient",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "CognitoConstructUserPool18663783",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "CognitoConstructDescribeCognitoUserPoolClientCustomResourcePolicy089C9A7D",
+        "Roles": [
+          {
+            "Ref": "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/CognitoConstruct/DescribeCognitoUserPoolClient/CustomResourcePolicy/Resource"
+      }
+    },
+    "CognitoConstructOAuthSecretD9962E7A": {
+      "Type": "AWS::SecretsManager::Secret",
+      "Properties": {
+        "GenerateSecretString": {
+          "ExcludePunctuation": true,
+          "GenerateStringKey": "randomPassword",
+          "SecretStringTemplate": {
+            "Fn::Join": [
+              "",
+              [
+                "{\"client_id\":\"",
+                {
+                  "Ref": "CognitoConstructRepositoryUserPoolClient2541A1F1"
+                },
+                "\",\"client_secret\":\"",
+                {
+                  "Fn::GetAtt": [
+                    "CognitoConstructDescribeCognitoUserPoolClientFD18A32C",
+                    "UserPoolClient.ClientSecret"
+                  ]
+                },
+                "\",\"redirect_uri\":\"",
+                {
+                  "Fn::GetAtt": [
+                    "QBusinessAppConstructQBusinessWebExperienceB77DB931",
+                    "DefaultEndpoint"
+                  ]
+                },
+                "oauth/callback\"}"
+              ]
+            ]
+          }
+        },
+        "Name": "OAuthSecret"
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/CognitoConstruct/OAuthSecret/Resource"
+      }
+    },
+    "CognitoConstructSecretAccessRole60DFE27A": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {
+                  "aws:SourceAccount": {
+                    "Ref": "AWS::AccountId"
+                  }
+                },
+                "ArnEquals": {
+                  "aws:SourceArn": {
+                    "Fn::GetAtt": [
+                      "QBusinessAppConstructQBusinessAppA9B72941",
+                      "ApplicationArn"
+                    ]
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "qbusiness.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Description": "Plugin Role with access to the OAuth secret in Secrets Manager"
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/CognitoConstruct/SecretAccessRole/Resource"
+      }
+    },
+    "CognitoConstructSecretAccessRoleDefaultPolicy6E18A691": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "secretsmanager:DescribeSecret",
+                "secretsmanager:GetSecretValue"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Ref": "CognitoConstructOAuthSecretD9962E7A"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "CognitoConstructSecretAccessRoleDefaultPolicy6E18A691",
+        "Roles": [
+          {
+            "Ref": "CognitoConstructSecretAccessRole60DFE27A"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/CognitoConstruct/SecretAccessRole/DefaultPolicy/Resource"
+      }
+    },
+    "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource"
+      }
+    },
+    "AWS679f53fac002430cb0da5b7982bd22872D164C4C": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "97f30e67419a1676a2215492723e5add1aa491caf0cbe2dd878fc4fab0468cd4.zip"
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs18.x",
+        "Timeout": 120
+      },
+      "DependsOn": [
+        "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AWS679f53fac002430cb0da5b7982bd2287/Resource",
+        "aws:asset:path": "asset.97f30e67419a1676a2215492723e5add1aa491caf0cbe2dd878fc4fab0468cd4",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "AwsBatchConstructCodeProcessingBucket7564CB72": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "Tags": [
+          {
+            "Key": "aws-cdk:auto-delete-objects",
+            "Value": "true"
+          },
+          {
+            "Key": "aws-cdk:cr-owned:code-processing:1e0c7baf",
+            "Value": "true"
+          },
+          {
+            "Key": "aws-cdk:cr-owned:research-agent:46add5e0",
+            "Value": "true"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CodeProcessingBucket/Resource"
+      }
+    },
+    "AwsBatchConstructCodeProcessingBucketPolicyDB7C9D3C": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "AwsBatchConstructCodeProcessingBucket7564CB72"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructCodeProcessingBucket7564CB72",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructCodeProcessingBucket7564CB72",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:DeleteObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:PutBucketPolicy"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                    "Arn"
+                  ]
+                }
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructCodeProcessingBucket7564CB72",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructCodeProcessingBucket7564CB72",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CodeProcessingBucket/Policy/Resource"
+      }
+    },
+    "AwsBatchConstructCodeProcessingBucketAutoDeleteObjectsCustomResource6B0808CD": {
+      "Type": "Custom::S3AutoDeleteObjects",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+            "Arn"
+          ]
+        },
+        "BucketName": {
+          "Ref": "AwsBatchConstructCodeProcessingBucket7564CB72"
+        }
+      },
+      "DependsOn": [
+        "AwsBatchConstructCodeProcessingBucketPolicyDB7C9D3C",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CodeProcessingBucket/AutoDeleteObjectsCustomResource/Default"
+      }
+    },
+    "AwsBatchConstructCodeProcessingBucketScriptAwsCliLayer3B14EBCC": {
+      "Type": "AWS::Lambda::LayerVersion",
+      "Properties": {
+        "Content": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "3322b7049fb0ed2b7cbb644a2ada8d1116ff80c32dca89e6ada846b5de26f961.zip"
+        },
+        "Description": "/opt/awscli/aws"
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CodeProcessingBucketScript/AwsCliLayer/Resource",
+        "aws:asset:path": "asset.3322b7049fb0ed2b7cbb644a2ada8d1116ff80c32dca89e6ada846b5de26f961.zip",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Content"
+      }
+    },
+    "AwsBatchConstructCodeProcessingBucketScriptCustomResource7F59D574": {
+      "Type": "Custom::CDKBucketDeployment",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C81C01536",
+            "Arn"
+          ]
+        },
+        "SourceBucketNames": [
+          "us-east-1-amazon-q-business-code-analysis"
+        ],
+        "SourceObjectKeys": [
+          "12c749d424cd5356d6c9a837218e29b4e4b9a80df93b08b388749fec873a6814.zip"
+        ],
+        "DestinationBucketName": {
+          "Ref": "AwsBatchConstructCodeProcessingBucket7564CB72"
+        },
+        "DestinationBucketKeyPrefix": "code-processing",
+        "Prune": true
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CodeProcessingBucketScript/CustomResource/Default"
+      }
+    },
+    "AwsBatchConstructAgentBucketScriptAwsCliLayer5608B0B1": {
+      "Type": "AWS::Lambda::LayerVersion",
+      "Properties": {
+        "Content": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "3322b7049fb0ed2b7cbb644a2ada8d1116ff80c32dca89e6ada846b5de26f961.zip"
+        },
+        "Description": "/opt/awscli/aws"
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/AgentBucketScript/AwsCliLayer/Resource",
+        "aws:asset:path": "asset.3322b7049fb0ed2b7cbb644a2ada8d1116ff80c32dca89e6ada846b5de26f961.zip",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Content"
+      }
+    },
+    "AwsBatchConstructAgentBucketScriptCustomResourceA86F1D43": {
+      "Type": "Custom::CDKBucketDeployment",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C81C01536",
+            "Arn"
+          ]
+        },
+        "SourceBucketNames": [
+          "us-east-1-amazon-q-business-code-analysis"
+        ],
+        "SourceObjectKeys": [
+          "95103c6d30638767053220930768477172367870e3697577a4b04812e6d562e2.zip"
+        ],
+        "DestinationBucketName": {
+          "Ref": "AwsBatchConstructCodeProcessingBucket7564CB72"
+        },
+        "DestinationBucketKeyPrefix": "research-agent",
+        "Prune": true
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/AgentBucketScript/CustomResource/Default"
+      }
+    },
+    "AwsBatchConstructVpc94EC4FC3": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "InstanceTenancy": "default",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/Resource"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet1SubnetC4616B42": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.0.0/18",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Public"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Public"
+          },
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "AwsBatchConstructVpc94EC4FC3"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/Subnet"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet1RouteTable778FF60E": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "AwsBatchConstructVpc94EC4FC3"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/RouteTable"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet1RouteTableAssociation38F37696": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "AwsBatchConstructVpcPublicSubnet1RouteTable778FF60E"
+        },
+        "SubnetId": {
+          "Ref": "AwsBatchConstructVpcPublicSubnet1SubnetC4616B42"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/RouteTableAssociation"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet1DefaultRouteB7669FFF": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "AwsBatchConstructVpcIGWF8512AC5"
+        },
+        "RouteTableId": {
+          "Ref": "AwsBatchConstructVpcPublicSubnet1RouteTable778FF60E"
+        }
+      },
+      "DependsOn": [
+        "AwsBatchConstructVpcVPCGWFFFC40BF",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/DefaultRoute"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet1EIP35F824C5": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/EIP"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet1NATGatewayDC0EF7DB": {
+      "Type": "AWS::EC2::NatGateway",
+      "Properties": {
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructVpcPublicSubnet1EIP35F824C5",
+            "AllocationId"
+          ]
+        },
+        "SubnetId": {
+          "Ref": "AwsBatchConstructVpcPublicSubnet1SubnetC4616B42"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1"
+          }
+        ]
+      },
+      "DependsOn": [
+        "AwsBatchConstructVpcPublicSubnet1DefaultRouteB7669FFF",
+        "AwsBatchConstructVpcPublicSubnet1RouteTableAssociation38F37696",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet1/NATGateway"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet2SubnetB89DF273": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.64.0/18",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Public"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Public"
+          },
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2"
+          }
+        ],
+        "VpcId": {
+          "Ref": "AwsBatchConstructVpc94EC4FC3"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/Subnet"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet2RouteTable1987A559": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2"
+          }
+        ],
+        "VpcId": {
+          "Ref": "AwsBatchConstructVpc94EC4FC3"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/RouteTable"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet2RouteTableAssociation1E341469": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "AwsBatchConstructVpcPublicSubnet2RouteTable1987A559"
+        },
+        "SubnetId": {
+          "Ref": "AwsBatchConstructVpcPublicSubnet2SubnetB89DF273"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/RouteTableAssociation"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet2DefaultRouteA3A4A04F": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "AwsBatchConstructVpcIGWF8512AC5"
+        },
+        "RouteTableId": {
+          "Ref": "AwsBatchConstructVpcPublicSubnet2RouteTable1987A559"
+        }
+      },
+      "DependsOn": [
+        "AwsBatchConstructVpcVPCGWFFFC40BF",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/DefaultRoute"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet2EIP4993F697": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/EIP"
+      }
+    },
+    "AwsBatchConstructVpcPublicSubnet2NATGateway454ECA6D": {
+      "Type": "AWS::EC2::NatGateway",
+      "Properties": {
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructVpcPublicSubnet2EIP4993F697",
+            "AllocationId"
+          ]
+        },
+        "SubnetId": {
+          "Ref": "AwsBatchConstructVpcPublicSubnet2SubnetB89DF273"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2"
+          }
+        ]
+      },
+      "DependsOn": [
+        "AwsBatchConstructVpcPublicSubnet2DefaultRouteA3A4A04F",
+        "AwsBatchConstructVpcPublicSubnet2RouteTableAssociation1E341469",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PublicSubnet2/NATGateway"
+      }
+    },
+    "AwsBatchConstructVpcPrivateSubnet1Subnet1B53BB99": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.128.0/18",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Private"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Private"
+          },
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "AwsBatchConstructVpc94EC4FC3"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1/Subnet"
+      }
+    },
+    "AwsBatchConstructVpcPrivateSubnet1RouteTable06823197": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "AwsBatchConstructVpc94EC4FC3"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1/RouteTable"
+      }
+    },
+    "AwsBatchConstructVpcPrivateSubnet1RouteTableAssociation37D35DEC": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "AwsBatchConstructVpcPrivateSubnet1RouteTable06823197"
+        },
+        "SubnetId": {
+          "Ref": "AwsBatchConstructVpcPrivateSubnet1Subnet1B53BB99"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1/RouteTableAssociation"
+      }
+    },
+    "AwsBatchConstructVpcPrivateSubnet1DefaultRoute0704CE1D": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "AwsBatchConstructVpcPublicSubnet1NATGatewayDC0EF7DB"
+        },
+        "RouteTableId": {
+          "Ref": "AwsBatchConstructVpcPrivateSubnet1RouteTable06823197"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet1/DefaultRoute"
+      }
+    },
+    "AwsBatchConstructVpcPrivateSubnet2Subnet48165E34": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.192.0/18",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Private"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Private"
+          },
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2"
+          }
+        ],
+        "VpcId": {
+          "Ref": "AwsBatchConstructVpc94EC4FC3"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2/Subnet"
+      }
+    },
+    "AwsBatchConstructVpcPrivateSubnet2RouteTable246A5D99": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2"
+          }
+        ],
+        "VpcId": {
+          "Ref": "AwsBatchConstructVpc94EC4FC3"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2/RouteTable"
+      }
+    },
+    "AwsBatchConstructVpcPrivateSubnet2RouteTableAssociation124B23F5": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "AwsBatchConstructVpcPrivateSubnet2RouteTable246A5D99"
+        },
+        "SubnetId": {
+          "Ref": "AwsBatchConstructVpcPrivateSubnet2Subnet48165E34"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2/RouteTableAssociation"
+      }
+    },
+    "AwsBatchConstructVpcPrivateSubnet2DefaultRouteB810E441": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "AwsBatchConstructVpcPublicSubnet2NATGateway454ECA6D"
+        },
+        "RouteTableId": {
+          "Ref": "AwsBatchConstructVpcPrivateSubnet2RouteTable246A5D99"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/PrivateSubnet2/DefaultRoute"
+      }
+    },
+    "AwsBatchConstructVpcIGWF8512AC5": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/IGW"
+      }
+    },
+    "AwsBatchConstructVpcVPCGWFFFC40BF": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "InternetGatewayId": {
+          "Ref": "AwsBatchConstructVpcIGWF8512AC5"
+        },
+        "VpcId": {
+          "Ref": "AwsBatchConstructVpc94EC4FC3"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/VPCGW"
+      }
+    },
+    "AwsBatchConstructVpcRestrictDefaultSecurityGroupCustomResourceE34A47F8": {
+      "Type": "Custom::VpcRestrictDefaultSG",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E",
+            "Arn"
+          ]
+        },
+        "DefaultSecurityGroupId": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructVpc94EC4FC3",
+            "DefaultSecurityGroup"
+          ]
+        },
+        "Account": {
+          "Ref": "AWS::AccountId"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/Vpc/RestrictDefaultSecurityGroupCustomResource/Default"
+      }
+    },
+    "AwsBatchConstructQScriptComputeEnvSecurityGroupBF3DC2A5": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QScriptComputeEnv/SecurityGroup",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "AwsBatchConstructVpc94EC4FC3"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QScriptComputeEnv/SecurityGroup/Resource"
+      }
+    },
+    "AwsBatchConstructQScriptComputeEnv68DACBBA": {
+      "Type": "AWS::Batch::ComputeEnvironment",
+      "Properties": {
+        "ComputeResources": {
+          "MaxvCpus": 256,
+          "SecurityGroupIds": [
+            {
+              "Fn::GetAtt": [
+                "AwsBatchConstructQScriptComputeEnvSecurityGroupBF3DC2A5",
+                "GroupId"
+              ]
+            }
+          ],
+          "Subnets": [
+            {
+              "Ref": "AwsBatchConstructVpcPrivateSubnet1Subnet1B53BB99"
+            },
+            {
+              "Ref": "AwsBatchConstructVpcPrivateSubnet2Subnet48165E34"
+            }
+          ],
+          "Type": "FARGATE"
+        },
+        "ReplaceComputeEnvironment": false,
+        "State": "ENABLED",
+        "Type": "managed",
+        "UpdatePolicy": {}
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QScriptComputeEnv/Resource"
+      }
+    },
+    "AwsBatchConstructQProcessingJobQueue401A8E7A": {
+      "Type": "AWS::Batch::JobQueue",
+      "Properties": {
+        "ComputeEnvironmentOrder": [
+          {
+            "ComputeEnvironment": {
+              "Fn::GetAtt": [
+                "AwsBatchConstructQScriptComputeEnv68DACBBA",
+                "ComputeEnvironmentArn"
+              ]
+            },
+            "Order": 1
+          }
+        ],
+        "Priority": 1,
+        "State": "ENABLED"
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QProcessingJobQueue/Resource"
+      }
+    },
+    "AwsBatchConstructQProcessingJobExecutionRoleC8809EBB": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QProcessingJobExecutionRole/Resource"
+      }
+    },
+    "AwsBatchConstructQProcessingJobExecutionRoleDefaultPolicy1A4792BA": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "qbusiness:BatchDeleteDocument",
+                "qbusiness:BatchPutDocument",
+                "qbusiness:ChatSync",
+                "qbusiness:StartDataSourceSyncJob",
+                "qbusiness:StopDataSourceSyncJob"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:qbusiness:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":application/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:logs:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":log-group:/aws/batch/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "iam:PassRole",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "QIamConstructQIamRoleApp9A52AB9C",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "s3:Abort*",
+                "s3:DeleteObject*",
+                "s3:GetBucket*",
+                "s3:GetObject*",
+                "s3:List*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructAgentKnowledgeBucketA208817D",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructCodeProcessingBucket7564CB72",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructAgentKnowledgeBucketA208817D",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructCodeProcessingBucket7564CB72",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "secretsmanager:GetSecretValue",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:secretsmanager:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":secret:",
+                    {
+                      "Ref": "SshSecretName"
+                    },
+                    "-??????"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "bedrock:InvokeModel",
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws:bedrock:us-west-2::foundation-model/anthropic.claude-3-opus-20240229-v1:0",
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:bedrock:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "::foundation-model/amazon.titan-embed-text-v1"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:bedrock:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:bedrock:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "::foundation-model/anthropic.claude-3-haiku-20240229-v1:1"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:bedrock:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "neptune-graph:DeleteDataViaQuery",
+                "neptune-graph:ReadDataViaQuery",
+                "neptune-graph:WriteDataViaQuery"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:neptune-graph:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":graph/"
+                  ]
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "AwsBatchConstructQProcessingJobExecutionRoleDefaultPolicy1A4792BA",
+        "Roles": [
+          {
+            "Ref": "AwsBatchConstructQProcessingJobExecutionRoleC8809EBB"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QProcessingJobExecutionRole/DefaultPolicy/Resource"
+      }
+    },
+    "AwsBatchConstructQBusinessJob0F51F50F": {
+      "Type": "AWS::Batch::JobDefinition",
+      "Properties": {
+        "ContainerProperties": {
+          "Environment": [],
+          "EphemeralStorage": {
+            "SizeInGiB": 21
+          },
+          "ExecutionRoleArn": {
+            "Fn::GetAtt": [
+              "AwsBatchConstructQProcessingJobExecutionRoleC8809EBB",
+              "Arn"
+            ]
+          },
+          "FargatePlatformConfiguration": {},
+          "Image": "public.ecr.aws/ubuntu/ubuntu:24.10",
+          "JobRoleArn": {
+            "Fn::GetAtt": [
+              "AwsBatchConstructQProcessingJobExecutionRoleC8809EBB",
+              "Arn"
+            ]
+          },
+          "NetworkConfiguration": {
+            "AssignPublicIp": "DISABLED"
+          },
+          "ReadonlyRootFilesystem": false,
+          "ResourceRequirements": [
+            {
+              "Type": "MEMORY",
+              "Value": "2048"
+            },
+            {
+              "Type": "VCPU",
+              "Value": "1"
+            }
+          ],
+          "RuntimePlatform": {}
+        },
+        "PlatformCapabilities": [
+          "FARGATE"
+        ],
+        "RetryStrategy": {},
+        "Timeout": {},
+        "Type": "container"
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessJob/Resource"
+      }
+    },
+    "AwsBatchConstructQBusinessSubmitJobRoleBC566CF1": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessSubmitJobRole/Resource"
+      }
+    },
+    "AwsBatchConstructQBusinessSubmitJobRoleDefaultPolicyAEB70587": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "qbusiness:ListApplications",
+                "qbusiness:ListIndices"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": "iam:PassRole",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "AwsBatchConstructQProcessingJobExecutionRoleC8809EBB",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:logs:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":log-group:/aws/lambda/*"
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "batch:SubmitJob",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructQProcessingJobQueue401A8E7A",
+                    "JobQueueArn"
+                  ]
+                },
+                {
+                  "Ref": "AwsBatchConstructQBusinessJob0F51F50F"
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "AwsBatchConstructQBusinessSubmitJobRoleDefaultPolicyAEB70587",
+        "Roles": [
+          {
+            "Ref": "AwsBatchConstructQBusinessSubmitJobRoleBC566CF1"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessSubmitJobRole/DefaultPolicy/Resource"
+      }
+    },
+    "AwsBatchConstructQBusinesssubmitBatchAnalysisJob09C1838E": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "a0ae0421dc56b71b6c11c6f23467a91bd0a945ae6345f5f620cdfe29e6e7595d.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "BATCH_JOB_DEFINITION": {
+              "Ref": "AwsBatchConstructQBusinessJob0F51F50F"
+            },
+            "BATCH_JOB_QUEUE": {
+              "Fn::GetAtt": [
+                "AwsBatchConstructQProcessingJobQueue401A8E7A",
+                "JobQueueArn"
+              ]
+            },
+            "REPO_URL": {
+              "Ref": "RepositoryUrl"
+            },
+            "AMAZON_Q_APP_ID": {
+              "Ref": "QBusinessAppConstructQBusinessAppA9B72941"
+            },
+            "Q_APP_NAME": {
+              "Ref": "ProjectName"
+            },
+            "Q_APP_DATA_SOURCE_ID": {
+              "Fn::Select": [
+                1,
+                {
+                  "Fn::Split": [
+                    "|",
+                    {
+                      "Ref": "QBusinessAppConstructQBusinessDataSourceE468CE34"
+                    }
+                  ]
+                }
+              ]
+            },
+            "Q_APP_INDEX": {
+              "Fn::Select": [
+                1,
+                {
+                  "Fn::Split": [
+                    "|",
+                    {
+                      "Ref": "QBusinessAppConstructQBusinessIndexF49BC9C6"
+                    }
+                  ]
+                }
+              ]
+            },
+            "Q_APP_ROLE_ARN": {
+              "Fn::GetAtt": [
+                "QIamConstructQIamRoleApp9A52AB9C",
+                "Arn"
+              ]
+            },
+            "S3_BUCKET": {
+              "Ref": "AwsBatchConstructCodeProcessingBucket7564CB72"
+            },
+            "SSH_URL": {
+              "Ref": "SshUrl"
+            },
+            "SSH_KEY_NAME": {
+              "Ref": "SshSecretName"
+            },
+            "ENABLE_GRAPH": {
+              "Ref": "EnableGraph"
+            },
+            "NEPTUNE_GRAPH_ID": ""
+          }
+        },
+        "Handler": "submit_batch_job.on_event",
+        "Layers": [
+          {
+            "Ref": "layerWithQBusinessB00C1A25"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructQBusinessSubmitJobRoleBC566CF1",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.12",
+        "Timeout": 300
+      },
+      "DependsOn": [
+        "AwsBatchConstructQBusinessJob0F51F50F",
+        "AwsBatchConstructQBusinessSubmitJobRoleDefaultPolicyAEB70587",
+        "AwsBatchConstructQBusinessSubmitJobRoleBC566CF1",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinesssubmitBatchAnalysisJob/Resource",
+        "aws:asset:path": "asset.a0ae0421dc56b71b6c11c6f23467a91bd0a945ae6345f5f620cdfe29e6e7595d",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEventServiceRoleA7127EBD": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBuinesssubmitBatchAnalysisJobProvider/framework-onEvent/ServiceRole/Resource"
+      }
+    },
+    "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEventServiceRoleDefaultPolicy0744C7E3": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructQBusinesssubmitBatchAnalysisJob09C1838E",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructQBusinesssubmitBatchAnalysisJob09C1838E",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEventServiceRoleDefaultPolicy0744C7E3",
+        "Roles": [
+          {
+            "Ref": "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEventServiceRoleA7127EBD"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBuinesssubmitBatchAnalysisJobProvider/framework-onEvent/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEvent354FFECE": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "3542be390685e0c8353d92ccb5796d343cd93ca946b6b0de798004206a199adc.zip"
+        },
+        "Description": "AWS CDK resource provider framework - onEvent (QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBuinesssubmitBatchAnalysisJobProvider)",
+        "Environment": {
+          "Variables": {
+            "USER_ON_EVENT_FUNCTION_ARN": {
+              "Fn::GetAtt": [
+                "AwsBatchConstructQBusinesssubmitBatchAnalysisJob09C1838E",
+                "Arn"
+              ]
+            }
+          }
+        },
+        "Handler": "framework.onEvent",
+        "Role": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEventServiceRoleA7127EBD",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs18.x",
+        "Timeout": 900
+      },
+      "DependsOn": [
+        "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEventServiceRoleDefaultPolicy0744C7E3",
+        "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEventServiceRoleA7127EBD",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBuinesssubmitBatchAnalysisJobProvider/framework-onEvent/Resource",
+        "aws:asset:path": "asset.3542be390685e0c8353d92ccb5796d343cd93ca946b6b0de798004206a199adc",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEventLogRetention191AFF96": {
+      "Type": "Custom::LogRetention",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A",
+            "Arn"
+          ]
+        },
+        "LogGroupName": {
+          "Fn::Join": [
+            "",
+            [
+              "/aws/lambda/",
+              {
+                "Ref": "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEvent354FFECE"
+              }
+            ]
+          ]
+        },
+        "RetentionInDays": 1
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBuinesssubmitBatchAnalysisJobProvider/framework-onEvent/LogRetention/Resource"
+      }
+    },
+    "AwsBatchConstructQBusinesssubmitBatchAnalysisJobCustomResourceC418BD45": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructQBuinesssubmitBatchAnalysisJobProviderframeworkonEvent354FFECE",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinesssubmitBatchAnalysisJobCustomResource/Default"
+      }
+    },
+    "AwsBatchConstructAgentKnowledgeBucketA208817D": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        },
+        "PublicAccessBlockConfiguration": {
+          "BlockPublicAcls": true,
+          "BlockPublicPolicy": true,
+          "IgnorePublicAcls": true,
+          "RestrictPublicBuckets": true
+        },
+        "Tags": [
+          {
+            "Key": "aws-cdk:auto-delete-objects",
+            "Value": "true"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/AgentKnowledgeBucket/Resource"
+      }
+    },
+    "AwsBatchConstructAgentKnowledgeBucketPolicyDC5FA0FF": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "AwsBatchConstructAgentKnowledgeBucketA208817D"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": "false"
+                }
+              },
+              "Effect": "Deny",
+              "Principal": {
+                "AWS": "*"
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructAgentKnowledgeBucketA208817D",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructAgentKnowledgeBucketA208817D",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:DeleteObject*",
+                "s3:GetBucket*",
+                "s3:List*",
+                "s3:PutBucketPolicy"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::GetAtt": [
+                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                    "Arn"
+                  ]
+                }
+              },
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructAgentKnowledgeBucketA208817D",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructAgentKnowledgeBucketA208817D",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/AgentKnowledgeBucket/Policy/Resource"
+      }
+    },
+    "AwsBatchConstructAgentKnowledgeBucketAutoDeleteObjectsCustomResource002D26D3": {
+      "Type": "Custom::S3AutoDeleteObjects",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+            "Arn"
+          ]
+        },
+        "BucketName": {
+          "Ref": "AwsBatchConstructAgentKnowledgeBucketA208817D"
+        }
+      },
+      "DependsOn": [
+        "AwsBatchConstructAgentKnowledgeBucketPolicyDC5FA0FF",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/AgentKnowledgeBucket/AutoDeleteObjectsCustomResource/Default"
+      }
+    },
+    "AwsBatchConstructQBusinessSubmitAgentJobLambda6CB567B4": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "a0ae0421dc56b71b6c11c6f23467a91bd0a945ae6345f5f620cdfe29e6e7595d.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "BATCH_JOB_DEFINITION": {
+              "Ref": "AwsBatchConstructQBusinessJob0F51F50F"
+            },
+            "BATCH_JOB_QUEUE": {
+              "Fn::GetAtt": [
+                "AwsBatchConstructQProcessingJobQueue401A8E7A",
+                "JobQueueArn"
+              ]
+            },
+            "REPO_URL": {
+              "Ref": "RepositoryUrl"
+            },
+            "AMAZON_Q_APP_ID": {
+              "Ref": "QBusinessAppConstructQBusinessAppA9B72941"
+            },
+            "Q_APP_NAME": {
+              "Ref": "ProjectName"
+            },
+            "Q_APP_DATA_SOURCE_ID": {
+              "Fn::Select": [
+                1,
+                {
+                  "Fn::Split": [
+                    "|",
+                    {
+                      "Ref": "QBusinessAppConstructQBusinessDataSourceE468CE34"
+                    }
+                  ]
+                }
+              ]
+            },
+            "Q_APP_INDEX": {
+              "Fn::Select": [
+                1,
+                {
+                  "Fn::Split": [
+                    "|",
+                    {
+                      "Ref": "QBusinessAppConstructQBusinessIndexF49BC9C6"
+                    }
+                  ]
+                }
+              ]
+            },
+            "Q_APP_ROLE_ARN": {
+              "Fn::GetAtt": [
+                "QIamConstructQIamRoleApp9A52AB9C",
+                "Arn"
+              ]
+            },
+            "S3_BUCKET": {
+              "Ref": "AwsBatchConstructCodeProcessingBucket7564CB72"
+            },
+            "SSH_URL": {
+              "Ref": "SshUrl"
+            },
+            "SSH_KEY_NAME": {
+              "Ref": "SshSecretName"
+            },
+            "ENABLE_GRAPH": {
+              "Ref": "EnableGraph"
+            },
+            "NEPTUNE_GRAPH_ID": "",
+            "INITIAL_GOAL": {
+              "Fn::Join": [
+                "",
+                [
+                  "Clone the <repo/> and document everything about it in the reasoning graph and Amazon Q.\n    Amazon Q should be populated as much as possible so that someone can immediately start working on it by searching the Amazon Q conversationally.\n    Some topics that should definitely be explored are:\n    - What is the purpose of the repository?\n    - What are the main components of the repository?\n    - How does the data flow in the repository?\n    <repo>",
+                  {
+                    "Ref": "RepositoryUrl"
+                  },
+                  "</repo>"
+                ]
+              ]
+            },
+            "AGENT_KNOWLEDGE_BUCKET": {
+              "Ref": "AwsBatchConstructAgentKnowledgeBucketA208817D"
+            }
+          }
+        },
+        "Handler": "submit_agent_job.lambda_handler",
+        "Layers": [
+          {
+            "Ref": "layerWithQBusinessB00C1A25"
+          }
+        ],
+        "MemorySize": 512,
+        "Role": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructQBusinessSubmitJobRoleBC566CF1",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.12",
+        "Timeout": 300
+      },
+      "DependsOn": [
+        "AwsBatchConstructQBusinessSubmitJobRoleDefaultPolicyAEB70587",
+        "AwsBatchConstructQBusinessSubmitJobRoleBC566CF1",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessSubmitAgentJobLambda/Resource",
+        "aws:asset:path": "asset.a0ae0421dc56b71b6c11c6f23467a91bd0a945ae6345f5f620cdfe29e6e7595d",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "AwsBatchConstructQBusinessSubmitAgentJobLambdaInvokeFcyXBRX02EWa52GlFECQiCzDt0fdRUDi4mo4foC5aUB9B18770": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructQBusinessSubmitAgentJobLambda6CB567B4",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com"
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessSubmitAgentJobLambda/InvokeFcyXBRX02EWa52GlF+ECQiCzDt0fdRUDi4mo4foC5aU="
+      }
+    },
+    "AwsBatchConstructQBusinessAgentApi398E37E1": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Description": "API Gateway for submitting agent job",
+        "Name": "QBusinessAgentApi"
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessAgentApi/Resource"
+      }
+    },
+    "AwsBatchConstructQBusinessAgentApiDeploymentBED83ADFf6350e6a02abfeec8d98b708cda288a5": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "Properties": {
+        "Description": "API Gateway for submitting agent job",
+        "RestApiId": {
+          "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+        }
+      },
+      "DependsOn": [
+        "AwsBatchConstructCognitoAuthorizer6CC86500",
+        "AwsBatchConstructQBusinessAgentApiagentgoalPOST22623DB4",
+        "AwsBatchConstructQBusinessAgentApiagentgoalA640B063",
+        "AwsBatchConstructRequestValidatorF4D085EF",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessAgentApi/Deployment/Resource"
+      }
+    },
+    "AwsBatchConstructQBusinessAgentApiDeploymentStageprod45A024C2": {
+      "Type": "AWS::ApiGateway::Stage",
+      "Properties": {
+        "DeploymentId": {
+          "Ref": "AwsBatchConstructQBusinessAgentApiDeploymentBED83ADFf6350e6a02abfeec8d98b708cda288a5"
+        },
+        "RestApiId": {
+          "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+        },
+        "StageName": "prod"
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessAgentApi/DeploymentStage.prod/Resource"
+      }
+    },
+    "AwsBatchConstructQBusinessAgentApiagentgoalA640B063": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructQBusinessAgentApi398E37E1",
+            "RootResourceId"
+          ]
+        },
+        "PathPart": "agent-goal",
+        "RestApiId": {
+          "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessAgentApi/Default/agent-goal/Resource"
+      }
+    },
+    "AwsBatchConstructQBusinessAgentApiagentgoalPOSTApiPermissionQBusinessCodeAnalysisCdkStackAwsBatchConstructQBusinessAgentApi0293379FPOSTagentgoalDDC6F5E9": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructQBusinessSubmitAgentJobLambda6CB567B4",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+              },
+              "/",
+              {
+                "Ref": "AwsBatchConstructQBusinessAgentApiDeploymentStageprod45A024C2"
+              },
+              "/POST/agent-goal"
+            ]
+          ]
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessAgentApi/Default/agent-goal/POST/ApiPermission.QBusinessCodeAnalysisCdkStackAwsBatchConstructQBusinessAgentApi0293379F.POST..agent-goal"
+      }
+    },
+    "AwsBatchConstructQBusinessAgentApiagentgoalPOSTApiPermissionTestQBusinessCodeAnalysisCdkStackAwsBatchConstructQBusinessAgentApi0293379FPOSTagentgoalE00FBC70": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructQBusinessSubmitAgentJobLambda6CB567B4",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+              },
+              "/test-invoke-stage/POST/agent-goal"
+            ]
+          ]
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessAgentApi/Default/agent-goal/POST/ApiPermission.Test.QBusinessCodeAnalysisCdkStackAwsBatchConstructQBusinessAgentApi0293379F.POST..agent-goal"
+      }
+    },
+    "AwsBatchConstructQBusinessAgentApiagentgoalPOST22623DB4": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationScopes": [
+          "repository/write"
+        ],
+        "AuthorizationType": "COGNITO_USER_POOLS",
+        "AuthorizerId": {
+          "Ref": "AwsBatchConstructCognitoAuthorizer6CC86500"
+        },
+        "HttpMethod": "POST",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructQBusinessSubmitAgentJobLambda6CB567B4",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "MethodResponses": [
+          {
+            "ResponseModels": {
+              "application/json": "Empty"
+            },
+            "StatusCode": "200"
+          }
+        ],
+        "RequestParameters": {
+          "method.request.header.Authorization": true
+        },
+        "ResourceId": {
+          "Ref": "AwsBatchConstructQBusinessAgentApiagentgoalA640B063"
+        },
+        "RestApiId": {
+          "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/QBusinessAgentApi/Default/agent-goal/POST/Resource"
+      }
+    },
+    "AwsBatchConstructCognitoAuthorizer6CC86500": {
+      "Type": "AWS::ApiGateway::Authorizer",
+      "Properties": {
+        "IdentitySource": "method.request.header.Authorization",
+        "Name": "QBusinessCodeAnalysisCdkStackAwsBatchConstructCognitoAuthorizer51297B5E",
+        "ProviderARNs": [
+          {
+            "Fn::GetAtt": [
+              "CognitoConstructUserPool18663783",
+              "Arn"
+            ]
+          }
+        ],
+        "RestApiId": {
+          "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+        },
+        "Type": "COGNITO_USER_POOLS"
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/CognitoAuthorizer/Resource"
+      }
+    },
+    "AwsBatchConstructRequestValidatorF4D085EF": {
+      "Type": "AWS::ApiGateway::RequestValidator",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+        },
+        "ValidateRequestBody": true
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/RequestValidator/Resource"
+      }
+    },
+    "AwsBatchConstructSchemaGeneratorFunctionServiceRoleB0323B9C": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SchemaGeneratorFunction/ServiceRole/Resource"
+      }
+    },
+    "AwsBatchConstructSchemaGeneratorFunctionServiceRoleDefaultPolicy66E7B8BE": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:Abort*",
+                "s3:DeleteObject*",
+                "s3:GetBucket*",
+                "s3:GetObject*",
+                "s3:List*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructCodeProcessingBucket7564CB72",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructCodeProcessingBucket7564CB72",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:Abort*",
+                "s3:DeleteObject*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructAgentKnowledgeBucketA208817D",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructAgentKnowledgeBucketA208817D",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": "iam:PassRole",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "CognitoConstructSecretAccessRole60DFE27A",
+                  "Arn"
+                ]
+              }
+            },
+            {
+              "Action": [
+                "apigateway:GET",
+                "qbusiness:CreatePlugin"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "AwsBatchConstructSchemaGeneratorFunctionServiceRoleDefaultPolicy66E7B8BE",
+        "Roles": [
+          {
+            "Ref": "AwsBatchConstructSchemaGeneratorFunctionServiceRoleB0323B9C"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SchemaGeneratorFunction/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "AwsBatchConstructSchemaGeneratorFunctionD37AD69D": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "8aa46413c0118a02e1b090621f7d2dc20c24f1032fa6aa9d9381cf5d006c2952.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "BUCKET_NAME": {
+              "Ref": "AwsBatchConstructCodeProcessingBucket7564CB72"
+            },
+            "API_ID": {
+              "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+            },
+            "STAGE_NAME": {
+              "Ref": "AwsBatchConstructQBusinessAgentApiDeploymentStageprod45A024C2"
+            },
+            "AUTH_URL": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "CognitoDomainPrefix"
+                  },
+                  ".auth.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".amazoncognito.com/oauth2/authorize"
+                ]
+              ]
+            },
+            "TOKEN_URL": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "CognitoDomainPrefix"
+                  },
+                  ".auth.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".amazoncognito.com/oauth2/token"
+                ]
+              ]
+            },
+            "SECRET_ROLE_ARN": {
+              "Fn::GetAtt": [
+                "CognitoConstructSecretAccessRole60DFE27A",
+                "Arn"
+              ]
+            },
+            "SECRET_ARN": {
+              "Ref": "CognitoConstructOAuthSecretD9962E7A"
+            },
+            "APP_ID": {
+              "Ref": "QBusinessAppConstructQBusinessAppA9B72941"
+            }
+          }
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructSchemaGeneratorFunctionServiceRoleB0323B9C",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs20.x"
+      },
+      "DependsOn": [
+        "AwsBatchConstructSchemaGeneratorFunctionServiceRoleDefaultPolicy66E7B8BE",
+        "AwsBatchConstructSchemaGeneratorFunctionServiceRoleB0323B9C",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SchemaGeneratorFunction/Resource",
+        "aws:asset:path": "asset.8aa46413c0118a02e1b090621f7d2dc20c24f1032fa6aa9d9381cf5d006c2952",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "AwsBatchConstructSchemaGeneratorProviderframeworkonEventServiceRole9CCEDCA7": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SchemaGeneratorProvider/framework-onEvent/ServiceRole/Resource"
+      }
+    },
+    "AwsBatchConstructSchemaGeneratorProviderframeworkonEventServiceRoleDefaultPolicyB94412D6": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "lambda:InvokeFunction",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructSchemaGeneratorFunctionD37AD69D",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructSchemaGeneratorFunctionD37AD69D",
+                          "Arn"
+                        ]
+                      },
+                      ":*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "AwsBatchConstructSchemaGeneratorProviderframeworkonEventServiceRoleDefaultPolicyB94412D6",
+        "Roles": [
+          {
+            "Ref": "AwsBatchConstructSchemaGeneratorProviderframeworkonEventServiceRole9CCEDCA7"
+          }
+        ]
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SchemaGeneratorProvider/framework-onEvent/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "AwsBatchConstructSchemaGeneratorProviderframeworkonEventFD6C199F": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "3542be390685e0c8353d92ccb5796d343cd93ca946b6b0de798004206a199adc.zip"
+        },
+        "Description": "AWS CDK resource provider framework - onEvent (QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SchemaGeneratorProvider)",
+        "Environment": {
+          "Variables": {
+            "USER_ON_EVENT_FUNCTION_ARN": {
+              "Fn::GetAtt": [
+                "AwsBatchConstructSchemaGeneratorFunctionD37AD69D",
+                "Arn"
+              ]
+            }
+          }
+        },
+        "Handler": "framework.onEvent",
+        "Role": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructSchemaGeneratorProviderframeworkonEventServiceRole9CCEDCA7",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs18.x",
+        "Timeout": 900
+      },
+      "DependsOn": [
+        "AwsBatchConstructSchemaGeneratorProviderframeworkonEventServiceRoleDefaultPolicyB94412D6",
+        "AwsBatchConstructSchemaGeneratorProviderframeworkonEventServiceRole9CCEDCA7",
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SchemaGeneratorProvider/framework-onEvent/Resource",
+        "aws:asset:path": "asset.3542be390685e0c8353d92ccb5796d343cd93ca946b6b0de798004206a199adc",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "AwsBatchConstructSchemaGeneratorTrigger0FBBE213": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "AwsBatchConstructSchemaGeneratorProviderframeworkonEventFD6C199F",
+            "Arn"
+          ]
+        },
+        "ApiId": {
+          "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+        }
+      },
+      "DependsOn": [
+        "QBusinessAppConstructQBusinessAppA9B72941",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleDefaultPolicy9F97DF18",
+        "QBusinessAppConstructQBusinessCustomLambdaRoleFE6EB133",
+        "QBusinessAppConstructQBusinessDataSourceE468CE34",
+        "QBusinessAppConstructQBusinessIndexF49BC9C6",
+        "QBusinessAppConstructQBusinessRetrieverCA6FF5EC",
+        "QBusinessAppConstructQBusinessWebExperienceB77DB931"
+      ],
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/AwsBatchConstruct/SchemaGeneratorTrigger/Default"
+      }
+    },
+    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role"
+      }
+    },
+    "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "2eb6a831b107939f63cfebf68e6316e1a40f79fc99cae0fee9b333bac8d29bc4.zip"
+        },
+        "Timeout": 900,
+        "MemorySize": 128,
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs18.x",
+        "Description": {
+          "Fn::Join": [
+            "",
+            [
+              "Lambda function for auto-deleting objects in ",
+              {
+                "Ref": "AwsBatchConstructCodeProcessingBucket7564CB72"
+              },
+              " S3 bucket."
+            ]
+          ]
+        }
+      },
+      "DependsOn": [
+        "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler",
+        "aws:asset:path": "asset.2eb6a831b107939f63cfebf68e6316e1a40f79fc99cae0fee9b333bac8d29bc4",
+        "aws:asset:property": "Code"
+      }
+    },
+    "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/Resource"
+      }
+    },
+    "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:GetBucket*",
+                "s3:GetObject*",
+                "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Fn::Sub": "us-east-1-amazon-q-business-code-analysis"
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Fn::Sub": "us-east-1-amazon-q-business-code-analysis"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Action": [
+                "s3:Abort*",
+                "s3:DeleteObject*",
+                "s3:GetBucket*",
+                "s3:GetObject*",
+                "s3:List*",
+                "s3:PutObject",
+                "s3:PutObjectLegalHold",
+                "s3:PutObjectRetention",
+                "s3:PutObjectTagging",
+                "s3:PutObjectVersionTagging"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "AwsBatchConstructCodeProcessingBucket7564CB72",
+                    "Arn"
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      {
+                        "Fn::GetAtt": [
+                          "AwsBatchConstructCodeProcessingBucket7564CB72",
+                          "Arn"
+                        ]
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF",
+        "Roles": [
+          {
+            "Ref": "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C81C01536": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "2d56e153cac88d3e0c2f842e8e6f6783b8725bf91f95e0673b4725448a56e96d.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "AWS_CA_BUNDLE": "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
+          }
+        },
+        "Handler": "index.handler",
+        "Layers": [
+          {
+            "Ref": "AwsBatchConstructCodeProcessingBucketScriptAwsCliLayer3B14EBCC"
+          }
+        ],
+        "Role": {
+          "Fn::GetAtt": [
+            "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.9",
+        "Timeout": 900
+      },
+      "DependsOn": [
+        "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRoleDefaultPolicy88902FDF",
+        "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756CServiceRole89A01265"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/Resource",
+        "aws:asset:path": "asset.2d56e153cac88d3e0c2f842e8e6f6783b8725bf91f95e0673b4725448a56e96d",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyName": "Inline",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ec2:AuthorizeSecurityGroupIngress",
+                    "ec2:AuthorizeSecurityGroupEgress",
+                    "ec2:RevokeSecurityGroupIngress",
+                    "ec2:RevokeSecurityGroupEgress"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:",
+                          {
+                            "Ref": "AWS::Partition"
+                          },
+                          ":ec2:",
+                          {
+                            "Ref": "AWS::Region"
+                          },
+                          ":",
+                          {
+                            "Ref": "AWS::AccountId"
+                          },
+                          ":security-group/",
+                          {
+                            "Fn::GetAtt": [
+                              "AwsBatchConstructVpc94EC4FC3",
+                              "DefaultSecurityGroup"
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Role"
+      }
+    },
+    "CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "ee7de53d64cc9d6248fa6aa550f92358f6c907b5efd6f3298aeab1b5e7ea358a.zip"
+        },
+        "Timeout": 900,
+        "MemorySize": 128,
+        "Handler": "__entrypoint__.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs18.x",
+        "Description": "Lambda function for removing all inbound/outbound rules from the VPC default security group"
+      },
+      "DependsOn": [
+        "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Handler",
+        "aws:asset:path": "asset.ee7de53d64cc9d6248fa6aa550f92358f6c907b5efd6f3298aeab1b5e7ea358a",
+        "aws:asset:property": "Code"
+      }
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/Resource"
+      }
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "logs:DeleteRetentionPolicy",
+                "logs:PutRetentionPolicy"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
+        "Roles": [
+          {
+            "Ref": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Handler": "index.handler",
+        "Runtime": "nodejs18.x",
+        "Timeout": 900,
+        "Code": {
+          "S3Bucket": "us-east-1-amazon-q-business-code-analysis",
+          "S3Key": "4e26bf2d0a26f2097fb2b261f22bb51e3f6b4b52635777b1e54edbd8e2d58c35.zip"
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB",
+        "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/Resource",
+        "aws:asset:path": "asset.4e26bf2d0a26f2097fb2b261f22bb51e3f6b4b52635777b1e54edbd8e2d58c35",
+        "aws:asset:is-bundled": false,
+        "aws:asset:property": "Code"
+      }
+    },
+    "CDKMetadata": {
+      "Type": "AWS::CDK::Metadata",
+      "Properties": {
+        "Analytics": "v2:deflate64:H4sIAAAAAAAA/3VUUVPbMAz+LbwbD9h2ey5t4eDYljVb99hTHDUIEjvYckuXy3/f2U7Swm1P+vRJli35s6/k5afP8uIM9u5clc/nNRWyyxnUs5hvdQYWGmS0AvZu0xE0sluZGkMs2szUpA4xNaJe1NAUJcjuAQ5o12gdGR3ib/ycdFUjG33jteLATGC+1ac4Q9uQC4t64T5uOnAO2clZMKLEtjaHBjXLa6+ekRcTEbJll9hrcCgSDCUHlMyxgVO/Fy+Fd6TROdnNt3rWtjUpGA91p0t8jTNAtoQ7tMFZAENuvFVxPL+xWL62aAm1wl4oU2liI7tfDm1mTB1yJjyChWmA9GloYEZ3hS7ukKMddv1PZKTnNaHm08TE9MKhssiuAQ0VWtnl0Q+ZCfUC1ZXs1q0K3Dqbi8wXNancF3rIm9DKeMafUCRlJP7IzZwziqbpxUAAy7ssmG/At8C4h4PILO2A8Vj4TjNajVNCOsngzZhBPYbbFjkqb4kPt9b4dujhSPSiAFaPsrsBWwHj3DStZ1zqHVmjm2FA/2DvTfHDo4+nnfBSuamOZiCNdoFb0hQbXCp3b4oTIi09Er2oTeXkg6lWyKhjDrRUpZ5kt0LHs5aSvBI8yjrq7OjlDFUaeQSjBqLgR2colPBX5EdTBmpESZejONzM86Ox9CeJ68Rb4YtHx2uoqQQ2NpV9y/X9m12/e249i/hWwwFJV0J5x6bZ2CHNyW62d/NITksza3ZUou3Fu8BpJ+mf2dThW9nA3qmaZChVU/xp3i0dS8bJxLvW5XAb2pQon9yH3dWFvPwiL86eHNG59ZqpQblK9i+E03PQJwUAAA=="
+      },
+      "Metadata": {
+        "aws:cdk:path": "QBusinessCodeAnalysisCdkStack/CDKMetadata/Default"
+      },
+      "Condition": "CDKMetadataAvailable"
+    }
+  },
+  "Outputs": {
+    "QIamConstructQBusinessRoleArn63337C89": {
+      "Value": {
+        "Fn::GetAtt": [
+          "QIamConstructQIamRoleApp9A52AB9C",
+          "Arn"
+        ]
+      }
+    },
+    "QIamConstructQBusinessWebExpRoleArnDC8AEA22": {
+      "Value": {
+        "Fn::GetAtt": [
+          "QIamConstructQIamRoleWebExpFEA4E8BB",
+          "Arn"
+        ]
+      }
+    },
+    "QBusinessAppName": {
+      "Description": "Amazon Q Business Application Name",
+      "Value": {
+        "Ref": "ProjectName"
+      }
+    },
+    "QBusinessAppId": {
+      "Description": "Amazon Q Business Application Id",
+      "Value": {
+        "Ref": "QBusinessAppConstructQBusinessAppA9B72941"
+      }
+    },
+    "QBusinessAppIndexId": {
+      "Description": "Amazon Q Business Application Index Id",
+      "Value": {
+        "Fn::Select": [
+          1,
+          {
+            "Fn::Split": [
+              "|",
+              {
+                "Ref": "QBusinessAppConstructQBusinessIndexF49BC9C6"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "QBusinessAppDataSourceId": {
+      "Description": "Amazon Q Business Application Data Source Id",
+      "Value": {
+        "Fn::Select": [
+          1,
+          {
+            "Fn::Split": [
+              "|",
+              {
+                "Ref": "QBusinessAppConstructQBusinessDataSourceE468CE34"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "AwsBatchConstructQBusinessAgentApiEndpoint807C4F3D": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": "AwsBatchConstructQBusinessAgentApi398E37E1"
+            },
+            ".execute-api.",
+            {
+              "Ref": "AWS::Region"
+            },
+            ".",
+            {
+              "Ref": "AWS::URLSuffix"
+            },
+            "/",
+            {
+              "Ref": "AwsBatchConstructQBusinessAgentApiDeploymentStageprod45A024C2"
+            },
+            "/"
+          ]
+        ]
+      }
+    },
+    "AwsBatchConstructJobQueue3E12035D": {
+      "Value": {
+        "Fn::GetAtt": [
+          "AwsBatchConstructQProcessingJobQueue401A8E7A",
+          "JobQueueArn"
+        ]
+      }
+    },
+    "AwsBatchConstructJobExecutionRoleEA00798E": {
+      "Value": {
+        "Fn::GetAtt": [
+          "AwsBatchConstructQProcessingJobExecutionRoleC8809EBB",
+          "Arn"
+        ]
+      }
+    }
+  },
+  "Conditions": {
+    "CDKMetadataAvailable": {
+      "Fn::Or": [
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "af-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-east-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-northeast-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-northeast-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ca-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "cn-north-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "cn-northwest-1"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-north-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-3"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "il-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "me-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "me-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "sa-east-1"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-east-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-east-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-west-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-west-2"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "Rules": {}
+}
