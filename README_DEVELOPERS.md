@@ -37,7 +37,7 @@ If you want to build and publish your own template, to your own S3 bucket, so th
 
 Navigate into the project root directory and, in a bash shell, run:
 
-1. `./publish.sh <cfn_bucket_basename> <cfn_prefix> <us-east-1 | us-west-2>`<public>
+1. `./publish.sh <cfn_bucket_basename> <us-east-1 | us-west-2>`<public>
   This:
     - checks your system dependendencies for required packages (see Dependencies above)
     - bootstraps your cdk environment if needed

@@ -7,12 +7,11 @@ const archiver = require('archiver');
 // Read command line arguments
 const templateName = process.argv[2];
 const destinationBucket = process.argv[3];
-const destinationPrefix = process.argv[4];
-const awsRegion = process.argv[5];
-if (!templateName || !destinationBucket || !destinationPrefix || !awsRegion) {
+const awsRegion = process.argv[4];
+if (!templateName || !destinationBucket || !awsRegion) {
   console.error('Error: All arguments must be provided.');
   console.error(
-    'Usage: <script> <templateName> <destinationBucket> <destinationPrefix> <awsRegion>'
+    'Usage: <script> <templateName> <destinationBucket> <awsRegion>'
   );
   process.exit(1);
 }
@@ -39,7 +38,6 @@ async function main() {
       await uploadAsset(
         sourceAsset,
         destinationBucket,
-        destinationPrefix,
         layer.codeAssetS3Key
       );
     }
@@ -60,7 +58,6 @@ async function main() {
       await uploadAsset(
         outFile,
         destinationBucket,
-        destinationPrefix,
         `${assetHash}.zip`
       );
     }
@@ -76,7 +73,6 @@ async function main() {
       await uploadAsset(
         zippedFilePath,
         destinationBucket,
-        destinationPrefix,
         lambda.codeAssetS3Key
       );
       fs.unlinkSync(zippedFilePath); // Clean up local zipped file
@@ -84,9 +80,9 @@ async function main() {
 
     // Update template with new code asset paths
     console.log('Updating CloudFormation template with new code asset paths...');
-    updateTemplateLambdaAssetPaths(template, lambdas, destinationBucket, destinationPrefix);
-    updateTemplateLayerAssetPaths(template, layers, destinationBucket, destinationPrefix);
-    updateTemplateCustCDKBucketAssetPaths(template, ccdkBuckets, destinationBucket, destinationPrefix);
+    updateTemplateLambdaAssetPaths(template, lambdas, destinationBucket);
+    updateTemplateLayerAssetPaths(template, layers, destinationBucket);
+    updateTemplateCustCDKBucketAssetPaths(template, ccdkBuckets, destinationBucket);
 
     // Fix up customCDK bucket IAM policies
     console.log('Updating remaining cdk bucket references...');
@@ -229,7 +225,7 @@ function zipDirectory(sourceDir, outFile) {
 }
 
 
-async function uploadAsset(zippedFilePath, destinationBucket, destinationPrefix, originalKey) {
+async function uploadAsset(zippedFilePath, destinationBucket, originalKey) {
   const fileStream = fs.createReadStream(zippedFilePath);
   const destinationKey = `${path.basename(originalKey)}`;
 
@@ -248,27 +244,27 @@ async function uploadAsset(zippedFilePath, destinationBucket, destinationPrefix,
   }
 }
 
-function updateTemplateLambdaAssetPaths(template, lambdas, destinationBucket, destinationPrefix) {
+function updateTemplateLambdaAssetPaths(template, lambdas, destinationBucket) {
   for (let lambda of lambdas) {
     let lambdaResource = template.Resources[lambda.resourceName];
     lambdaResource.Properties.Code.S3Bucket = destinationBucket;
-    lambdaResource.Properties.Code.S3Key = `${path.basename(lambda.codeAssetS3Key)}`; // ${destinationPrefix}/
+    lambdaResource.Properties.Code.S3Key = `${path.basename(lambda.codeAssetS3Key)}`; 
   }
 }
 
-function updateTemplateLayerAssetPaths(template, layers, destinationBucket, destinationPrefix) {
+function updateTemplateLayerAssetPaths(template, layers, destinationBucket) {
   for (let layer of layers) {
     let layerResource = template.Resources[layer.resourceName];
     layerResource.Properties.Content.S3Bucket = destinationBucket;
-    layerResource.Properties.Content.S3Key = `${path.basename(layer.codeAssetS3Key)}`; // ${destinationPrefix}/
+    layerResource.Properties.Content.S3Key = `${path.basename(layer.codeAssetS3Key)}`; 
   }
 }
 
-function updateTemplateCustCDKBucketAssetPaths(template, ccdkBuckets, destinationBucket, destinationPrefix) {
+function updateTemplateCustCDKBucketAssetPaths(template, ccdkBuckets, destinationBucket) {
   for (let bucket of ccdkBuckets) {
     let bucketResource = template.Resources[bucket.resourceName];
     bucketResource.Properties.SourceBucketNames[0] = destinationBucket;
-    bucketResource.Properties.SourceObjectKeys[0] = `${path.basename(bucket.SourceKey)}`; // ${destinationPrefix}/
+    bucketResource.Properties.SourceObjectKeys[0] = `${path.basename(bucket.SourceKey)}`;
   }
 }
 
@@ -288,100 +284,5 @@ function updateTemplateCustCDKBucketAssetPaths(template, ccdkBuckets, destinatio
     }
   }
 
-function replaceQAppIdResourceArn(role, arn) {
-  const amazonQAppResourceArn = {
-    'Fn::Sub': 'arn:aws:qbusiness:*:*:application/${AmazonQAppId}'
-  };
-  if (typeof arn === 'string' && arn.startsWith('arn:aws:qbusiness:*:*:application/')) {
-    console.log(
-      `Role ${role}: updating Q application arn: ${arn} to ${JSON.stringify(amazonQAppResourceArn)}`
-    );
-    arn = amazonQAppResourceArn;
-  }
-  return arn;
-}
-
-function updateTemplateLambdaRolePermissions(template, lambdas) {
-  for (let lambda of lambdas) {
-    const roleResourceName = lambda.roleResourceName;
-    const roleResource = template.Resources[roleResourceName];
-    for (let policy of roleResource.Properties.Policies) {
-      for (let statement of policy.PolicyDocument.Statement) {
-        const resource = statement.Resource;
-        if (Array.isArray(resource)) {
-          for (let i = 0; i < resource.length; i++) {
-            statement.Resource[i] = replaceQAppIdResourceArn(roleResourceName, resource[i]);
-          }
-        } else {
-          statement.Resource = replaceQAppIdResourceArn(roleResourceName, resource);
-        }
-      }
-    }
-  }
-}
-
-function parameterizeTemplate(template) {
-  const allowedQRegions = ['us-east-1', 'us-west-2'];
-  const defaultQRegion = allowedQRegions.includes(awsRegion) ? awsRegion : allowedQRegions[0];
-  template.Parameters = {
-    ProjectName: {
-      Type: 'String',
-      AllowedPattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]*$',
-      Description: 'The project name, for example langchain-agents.'
-    },
-    repositoryUrlParam: {
-      Type: 'String',
-      AllowedPattern: '^https?://.+(\.git)$',
-      Description: 'The Git URL of the repository to scan and ingest into Amazon Q Business. Note it should end with .git, i.e. https://github.com/aws-samples/langchain-agents.git'
-    },
-    sshUrlParam: {
-      Type: 'String',
-      Default: 'None',
-      Description: 'Optional. The SSH URL of the repository to scan and ingest into Amazon Q Business. Note it should end with .git, i.e. git@github.com:aws-samples/langchain-agents.git'
-    },
-    sshKeyNameParam: {
-      Type: 'String',
-      Default: 'None',
-      Description: 'Optional. The name of the SSH key to use to access the repository. It should be the name of the SSH key stored in the AWS Systems Manager Parameter Store.'
-    },
-    idcArnParam: {
-      Type: 'String',
-      AllowedPattern: '^arn:aws[a-zA-Z0-9-]*:sso:[a-z0-9-]*:[0-9]{12}:instance\/.*$|^arn:aws:sso:::instance\/.*$',
-      Description: 'The arn of Identity Center in the same region that the Q application is going to be deployed'
-    },
-    enableGraphParam: {
-      Type: 'String',
-      Description: 'Enable the Neptune Graph. Set to true to enable the graph, false to disable it.',
-      AllowedValues: ['true', 'false'],
-      Default: 'false'
-    },
-    enableResearchAgentParam: {
-      Type: 'String',
-      Description: 'Enable the Research Agent. Set to true to enable the research agent, false to disable it.',
-      AllowedValues: ['true', 'false'],
-      Default: 'false'
-    },
-    cognitoDomainPrefixParam: {
-      Type: 'String',
-      Description: 'The cognito domain prefix.',
-      AllowedPattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]*$'
-    },
-  }  
-}
-
-function replaceSubstringInObject(obj, searchValue, replaceValue) {
-  for (let key in obj) {
-    if (typeof obj[key] === 'string') {
-      obj[key] = obj[key].replace(searchValue, replaceValue);
-    } else if (typeof obj[key] === 'object') {
-      replaceSubstringInObject(obj[key], searchValue, replaceValue);
-    }
-  }
-}
-
-function findOutputKey(obj, substring) {
-  let keys = Object.keys(obj).filter((key) => key.includes(substring));
-  return keys[0] || null; // Return the first key or null if no match is found
-}
 
 main();
