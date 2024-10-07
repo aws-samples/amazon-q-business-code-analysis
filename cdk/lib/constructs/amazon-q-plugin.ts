@@ -79,7 +79,7 @@ export class AmazonQPluginConstruct extends Construct {
                       authorizationUrl: `${props.cognitoDomain}/oauth2/authorize`,
                       tokenUrl: `${props.cognitoDomain}/oauth2/token`,
                       scopes: {
-                        "repository/write": "Write access to protected resources"
+                        "agent/write": "Write access to protected resources"
                       },
                     },
                   },
@@ -89,7 +89,7 @@ export class AmazonQPluginConstruct extends Construct {
             security: [
               {
                 oauth2: [
-                  "repository/write"
+                  "agent/write"
                 ]
               }
             ]

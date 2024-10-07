@@ -73,7 +73,7 @@ exports.handler = async (event) => {
               authorizationUrl: `${authUrl}`,
               tokenUrl: `${tokenUrl}`,
               scopes: {
-                "repository/write": "Write access to protected resources"
+                "agent/write": "Write access to protected resources"
               },
             },
           },
@@ -83,7 +83,7 @@ exports.handler = async (event) => {
     security: [
       {
         oauth2: [
-          "repository/write"
+          "agent/write"
         ]
       }
     ]

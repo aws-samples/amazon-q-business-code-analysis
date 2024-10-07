@@ -324,7 +324,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
         const agentResource = agentApi.root.addResource('agent-goal');
         const agentIntegration = new cdk.aws_apigateway.LambdaIntegration(submitAgentJobLambda);
 
-        const writeScope = 'repository/write';
+        const writeScope = 'agent/write';
 
         agentResource.addMethod('POST', agentIntegration, {
           authorizer: auth,
