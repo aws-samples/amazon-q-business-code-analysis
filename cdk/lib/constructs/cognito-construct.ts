@@ -22,7 +22,7 @@ export class CognitoConstruct extends Construct {
         super(scope, id);
 
         const userPool = new cognito.UserPool(this, 'UserPool', {
-            userPoolName: 'CustomPluginUserPool',
+            userPoolName: 'AgentUserPool',
             selfSignUpEnabled: true,
             signInAliases: { email: true },
             autoVerify: { email: true },
@@ -48,11 +48,11 @@ export class CognitoConstruct extends Construct {
         // Define a resource server
         const userPoolResourceServer = new cognito.UserPoolResourceServer(this, 'UserPoolResourceServer', {
             userPool: this.userPool,
-            identifier: 'repository',
+            identifier: 'agent',
             scopes: [writeScope],
         });
 
-        this.userPoolClient = new cognito.UserPoolClient(this, 'RepositoryUserPoolClient', {
+        this.userPoolClient = new cognito.UserPoolClient(this, 'AgentUserPoolClient', {
             userPool: this.userPool,
             generateSecret: true,
             oAuth: {
@@ -67,7 +67,7 @@ export class CognitoConstruct extends Construct {
         const clientSecret = this.CognitoUserPoolClientSecret(this.userPool, this.userPoolClient);
         
         this.secret = new secretsmanager.Secret(this, 'OAuthSecret', {
-            secretName: 'OAuthSecret',
+            secretName: 'CognitoOAuthCredentialsSecret',
             generateSecretString: {
                 secretStringTemplate: JSON.stringify({
                     client_id: this.userPoolClient.userPoolClientId,
