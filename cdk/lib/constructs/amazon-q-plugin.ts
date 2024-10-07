@@ -96,7 +96,7 @@ export class AmazonQPluginConstruct extends Construct {
           };
 
           
-        const cfnPlugin = new qbusiness.CfnPlugin(this, 'RepositoryPlugin', {
+        const cfnPlugin = new qbusiness.CfnPlugin(this, 'AgentPlugin', {
             applicationId: props.appId,
             authConfiguration: {
                 oAuth2ClientCredentialConfiguration: {
@@ -104,7 +104,7 @@ export class AmazonQPluginConstruct extends Construct {
                     secretArn: props.secret.secretArn,
                 },
             },
-            displayName: 'RepositoryPlugin',
+            displayName: 'AgentPlugin',
             type: 'CUSTOM',
             customPluginConfiguration: {
               apiSchema: { payload: JSON.stringify(openApiSchema) },
