@@ -100,6 +100,7 @@ exports.handler = async (event) => {
 
     console.log('OpenAPI schema uploaded successfully');
     const uniqueId = Math.random().toString(36).substring(7);
+
     return {
       Status: 'SUCCESS',
       PhysicalResourceId: uniqueId,
@@ -110,7 +111,15 @@ exports.handler = async (event) => {
         Message: 'OpenAPI schema generated and uploaded successfully'
       }
     };
+    
   } catch (error) {
+    var uniqueId;
+    if (event.PhysicalResourceId) {
+      uniqueId = event.PhysicalResourceId;
+    }
+    else{
+      uniqueId = Math.random().toString(36).substring(7);
+    }
     console.error('Error:', error);
     return {
       Status: 'FAILED',

@@ -290,16 +290,26 @@ export class AwsBatchAnalysisConstruct extends Construct {
           memorySize: 512,
         });
 
-        submitAgentJobLambda.node.addDependency(jobDefinition);
+        // submitAgentJobLambda.node.addDependency(jobDefinition);
 
-        // Custom resource to invoke the lambda
-        const submitAgentJobLambdaProvider = new cdk.custom_resources.Provider(this, 'QBuinessSubmitAgentJobLambdaProvider', {
-          onEventHandler: submitAgentJobLambda,
-          logRetention: cdk.aws_logs.RetentionDays.ONE_DAY,
+        // // Custom resource to invoke the lambda
+        // const submitAgentJobLambdaProvider = new cdk.custom_resources.Provider(this, 'QBuinessSubmitAgentJobLambdaProvider', {
+        //   onEventHandler: submitAgentJobLambda,
+        //   logRetention: cdk.aws_logs.RetentionDays.ONE_DAY,
+        // });
+
+        // new cdk.CustomResource(this, 'QBusinessSubmitAgentJobLambdaCustomResource', {
+        //   serviceToken: submitAgentJobLambdaProvider.serviceToken,
+        // });
+
+        // Add API Gateway that invokes Lambda to submit agent job
+        const agentApi = new cdk.aws_apigateway.RestApi(this, 'QBusinessAgentApi', {
+          restApiName: 'QBusinessAgentApi',
+          description: 'API Gateway for submitting agent job',
         });
 
-        new cdk.CustomResource(this, 'QBusinessSubmitAgentJobLambdaCustomResource', {
-          serviceToken: submitAgentJobLambdaProvider.serviceToken,
+        const auth = new cdk.aws_apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
+          cognitoUserPools: [props.userPool],
         });
 
         // Add API Gateway that invokes Lambda to submit agent job
@@ -313,7 +323,6 @@ export class AwsBatchAnalysisConstruct extends Construct {
         const auth = new cdk.aws_apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
           cognitoUserPools: [props.userPool],
         });
-
         // Define a request validator
         const requestValidator = new cdk.aws_apigateway.RequestValidator(this, 'RequestValidator', {
           restApi: agentApi,

@@ -58,15 +58,15 @@ You can deploy the stack using the following command. Add the following paramete
 Note, you only need to bootstrap once. If you have already bootstrapped your account, you can skip the bootstrap command.
 
 ```bash
-npx cdk bootstrap --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters <identity_center_arn> --parameters CognitoDomainPrefix=<cognito_domain> --require-approval never
+npx cdk bootstrap --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters IdcArn=<identity_center_arn> --parameters CognitoDomainPrefix=<uniqueDomainPrefix> --require-approval never
 
-npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters  IdcArn=<identity_center_arn> --parameters CognitoDomainPrefix=<cognito_domain> --require-approval never
+npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters  IdcArn=<identity_center_arn> --parameters CognitoDomainPrefix=<uniqueDomainPrefix> --require-approval never
 ```
 
 Here is an example of how to deploy the stack with parameters.
 
 ```bash
-npx cdk deploy --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters ProjectName=Langchain-Agents --require-approval never
+npx cdk deploy --parameters RepositoryUrl=https://github.com/aws-samples/langchain-agents.git --parameters ProjectName=Langchain-Agents --parameters IdcArn=arn:aws:sso:::instance/ssoins-your-idc-id --parameters CognitoDomainPrefix=sampleuniqueprefix --require-approval never
 ```
 
 ### 2. Access the Amazon Q for Business application

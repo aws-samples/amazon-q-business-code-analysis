@@ -133,12 +133,12 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
 
     // Neptune Graph generation
     var neptuneGraphId = '';
-    if (cdk.Fn.conditionEquals(enableGraphParam.valueAsString, 'true')) {
-      const neptuneConstruct = new AmazonNeptuneConstruct(this, 'NeptuneConstruct', {
-        qAppName: qAppName
-      });
-      neptuneGraphId = neptuneConstruct.graph.attrGraphId;
-    }
+    // if (cdk.Fn.conditionEquals(enableGraphParam.valueAsString, 'true')) {
+    //   const neptuneConstruct = new AmazonNeptuneConstruct(this, 'NeptuneConstruct', {
+    //     qAppName: qAppName
+    //   });
+    //   neptuneGraphId = neptuneConstruct.graph.attrGraphId;
+    // }
 
     // AWS Batch to run the code analysis
     const awsBatchConstruct = new AwsBatchAnalysisConstruct(this, 'AwsBatchConstruct', {
