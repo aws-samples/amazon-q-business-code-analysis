@@ -10,6 +10,8 @@ This allows one to understand their code base and generate detailed next steps t
 ### Pre-requisites
 You need to have an AWS account and an IAM Role/User with permissions to create and manage the necessary resources and components for this application. (If you do not have an AWS account, please see [How do I create and activate a new Amazon Web Services account?](https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/))
 
+Your AWS account will also need to have Bedrock model access to Claude 3 Sonnet and Titan Embeddings G1 - Text. This can be requested using the AWS console.
+
 ### 1. Deploy the stack
 
 We've made this easy by providing pre-built AWS CloudFormation templates that deploy everything you need in your AWS account.
@@ -27,7 +29,7 @@ We've made this easy by providing pre-built AWS CloudFormation templates that de
 
 Region | Easy Deploy Button | Template URL - use to upgrade existing stack to a new release
 --- | --- | ---
-N. Virginia (us-east-1) | [![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://us-east-1-amazon-q-business-code-analysis.s3.amazonaws.com/cloudformation.yml) | https://us-east-1-amazon-q-business-code-analysis.s3.amazonaws.com/cloudformation.yml
+N. Virginia (us-east-1) | [![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://s3.us-east-1.amazonaws.com/us-east-1-amazon-q-business-code-analysis/QBusinessCodeAnalysis.json&stackName=AMAZON-Q-BUSINESS-CODE-ANALYSIS) | https://s3.us-east-1.amazonaws.com/us-east-1-amazon-q-business-code-analysis/QBusinessCodeAnalysis.json
 
 Note: Depending on the size of the repo and the number of files, the pre-processing job may take anywhere between five minutes to an hour to complete after stack creation. To monitor the progress, you can check the logs under jobs in the Amazon Batch console. If you use the Q for Business application, before pre-processing is completed you may not get the best results.
 

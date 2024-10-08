@@ -123,7 +123,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
 
       const jobDefinition = new batch.EcsJobDefinition(this, 'QBusinessJob', {
         container: new batch.EcsFargateContainerDefinition(this, 'Container', {
-          image: ecs.ContainerImage.fromRegistry('public.ecr.aws/ubuntu/ubuntu:24.10'),
+          image: ecs.ContainerImage.fromRegistry('public.ecr.aws/ubuntu/ubuntu:24.10'), 
           memory: cdk.Size.gibibytes(2),
           cpu: 1,
           executionRole: jobExecutionRole,
