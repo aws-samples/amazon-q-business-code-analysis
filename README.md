@@ -60,7 +60,7 @@ You can deploy the stack using the following command. Add the following paramete
 Note, you only need to bootstrap once. If you have already bootstrapped your account, you can skip the bootstrap command.
 
 ```bash
-npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters IdcArn=<identity_center_arn> --parameters CognitoDomainPrefix=<uniqueDomainPrefix> --require-approval never
+npx cdk bootstrap --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters IdcArn=<identity_center_arn> --parameters CognitoDomainPrefix=<uniqueDomainPrefix> --require-approval never
 
 npx cdk deploy --parameters RepositoryUrl=<repository_git_url> --parameters ProjectName=<project_name> --parameters  IdcArn=<identity_center_arn> --parameters CognitoDomainPrefix=<uniqueDomainPrefix> --require-approval never
 ```

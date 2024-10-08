@@ -5,6 +5,7 @@ import { QIamRoleConstruct } from './constructs/q-iam-role-construct';
 import { AwsBatchAnalysisConstruct } from './constructs/aws-batch-analysis-construct';
 import { AmazonNeptuneConstruct } from './constructs/amazon-neptune-construct';
 import { CognitoConstruct } from './constructs/cognito-construct';
+import { AmazonQPluginConstruct } from './constructs/amazon-q-plugin';
 
 export class QBusinessCodeAnalysisStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -154,11 +155,19 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       enableGraphParam: enableGraphParam,
       neptuneGraphId: neptuneGraphId,
       cognitoDomain: cognitoConstruct.cognitoDomain,
-      userPool: cognitoConstruct.userPool,
-      cognitoSecretAccessRole: cognitoConstruct.secretAccessRole,
-      cognitoSecret: cognitoConstruct.secret
+      userPool: cognitoConstruct.userPool
     });
 
     awsBatchConstruct.node.addDependency(qBusinessConstruct);
+
+    const customPluginConstruct = new AmazonQPluginConstruct(this, 'CustomPluginConstruct', {
+       appId: qBusinessConstruct.appId,
+       secretAccessRole: cognitoConstruct.secretAccessRole,
+       secret: cognitoConstruct.secret,
+       apiUrl: awsBatchConstruct.apiUrl,
+       cognitoDomain: cognitoConstruct.cognitoDomain
+    });
+
+    customPluginConstruct.node.addDependency(cognitoConstruct);
   }
 }

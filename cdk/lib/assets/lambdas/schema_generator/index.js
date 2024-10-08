@@ -2,7 +2,6 @@
 // S3 client from @aws-sdk/client-s3
 
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
-const { QBusinessClient, CreatePluginCommand } = require('@aws-sdk/client-qbusiness');
 
 exports.handler = async (event) => {
   const apiId = process.env.API_ID;
@@ -10,10 +9,6 @@ exports.handler = async (event) => {
   const region = process.env.AWS_REGION;
   const authUrl = process.env.AUTH_URL;
   const tokenUrl = process.env.TOKEN_URL;
-  const secretRoleArn = process.env.SECRET_ROLE_ARN;
-  const secretArn = process.env.SECRET_ARN;
-  const bucketName = process.env.BUCKET_NAME;
-  const appId = process.env.APP_ID;
 
   const openApiSchema = {
     openapi: '3.0.3',
@@ -78,7 +73,7 @@ exports.handler = async (event) => {
               authorizationUrl: `${authUrl}`,
               tokenUrl: `${tokenUrl}`,
               scopes: {
-                "repository/write": "Write access to protected resources"
+                "agent/write": "Write access to protected resources"
               },
             },
           },
@@ -88,7 +83,7 @@ exports.handler = async (event) => {
     security: [
       {
         oauth2: [
-          "repository/write"
+          "agent/write"
         ]
       }
     ]
@@ -97,43 +92,14 @@ exports.handler = async (event) => {
   try {
     const s3Client = new S3Client({ region });
     const putObjectParams = {
-      Bucket: bucketName,
+      Bucket: process.env.BUCKET_NAME,
       Key: 'openapi-schema.json',
       Body: JSON.stringify(openApiSchema),
     };
     await s3Client.send(new PutObjectCommand(putObjectParams));
 
     console.log('OpenAPI schema uploaded successfully');
-    var uniqueId;
-    if (event.PhysicalResourceId) {
-      uniqueId = event.PhysicalResourceId;
-    }
-    else{
-      uniqueId = Math.random().toString(36).substring(7);
-    }
-    
-    const qClient = new QBusinessClient({ region });
-    const input = {
-        applicationId: appId,
-        authConfiguration: {
-            oAuth2ClientCredentialConfiguration: {
-                roleArn: secretRoleArn,
-                secretArn: secretArn,
-            },
-        },
-        displayName: 'ResearchAgent',
-        type: 'CUSTOM',
-        customPluginConfiguration: {
-            apiSchema: { s3: {
-                bucket: bucketName,
-                key: 'openapi-schema.json',
-            } },
-            apiSchemaType: 'OPEN_API_V3',
-            description: 'Custom Plugin Description',
-        },
-    }
-    const command = new CreatePluginCommand(input);
-    const response = await qClient.send(command);
+    const uniqueId = Math.random().toString(36).substring(7);
 
     return {
       Status: 'SUCCESS',

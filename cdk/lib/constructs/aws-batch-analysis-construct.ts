@@ -5,8 +5,6 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as cognito from 'aws-cdk-lib/aws-cognito';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 
 export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly qAppName: string;
@@ -23,14 +21,12 @@ export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly enableResearchAgentParam: cdk.CfnParameter;
   readonly userPool: cognito.UserPool;
   readonly cognitoDomain: string;
-  readonly cognitoSecretAccessRole: iam.Role;
-  readonly cognitoSecret: secretsmanager.Secret;
 }
 
 const defaultProps: Partial<AwsBatchAnalysisProps> = {};
 
 export class AwsBatchAnalysisConstruct extends Construct {
-
+    public readonly apiUrl: string;
     constructor(scope: Construct, name: string, props: AwsBatchAnalysisProps) {
       super(scope, name);
 
@@ -316,6 +312,17 @@ export class AwsBatchAnalysisConstruct extends Construct {
           cognitoUserPools: [props.userPool],
         });
 
+        // Add API Gateway that invokes Lambda to submit agent job
+        const agentApi = new cdk.aws_apigateway.RestApi(this, 'QBusinessAgentApi', {
+          restApiName: 'QBusinessAgentApi',
+          description: 'API Gateway for submitting agent job',
+        });
+        
+        this.apiUrl = agentApi.url;
+        
+        const auth = new cdk.aws_apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
+          cognitoUserPools: [props.userPool],
+        });
         // Define a request validator
         const requestValidator = new cdk.aws_apigateway.RequestValidator(this, 'RequestValidator', {
           restApi: agentApi,
@@ -326,7 +333,7 @@ export class AwsBatchAnalysisConstruct extends Construct {
         const agentResource = agentApi.root.addResource('agent-goal');
         const agentIntegration = new cdk.aws_apigateway.LambdaIntegration(submitAgentJobLambda);
 
-        const writeScope = 'repository/write';
+        const writeScope = 'agent/write';
 
         agentResource.addMethod('POST', agentIntegration, {
           authorizer: auth,
@@ -359,39 +366,20 @@ export class AwsBatchAnalysisConstruct extends Construct {
             STAGE_NAME: agentApi.deploymentStage.stageName,
             AUTH_URL: props.cognitoDomain + '/oauth2/authorize',
             TOKEN_URL: props.cognitoDomain + '/oauth2/token',
-            SECRET_ROLE_ARN: props.cognitoSecretAccessRole.roleArn,
-            SECRET_ARN: props.cognitoSecret.secretArn,
-            APP_ID: props.qAppId,
           },
         });
 
         // Grant the Lambda function permission to write to the S3 bucket
-        s3Bucket.grantReadWrite(schemaGeneratorFunction);
+        s3Bucket.grantWrite(schemaGeneratorFunction);
 
         // Grant the Lambda function permission to write to agent knowledge bucket
         agentKnowledgeBucket.grantWrite(schemaGeneratorFunction);
         agentKnowledgeBucket.grantReadWrite(jobExecutionRole);
 
-        // Grant it access to pass cognitoSecretAccessRole
-        schemaGeneratorFunction.addToRolePolicy(
-          new cdk.aws_iam.PolicyStatement({
-            actions: ['iam:PassRole'],
-            resources: [props.cognitoSecretAccessRole.roleArn],
-          })
-        );
-
         // Grant the Lambda function permission to describe API Gateway
         schemaGeneratorFunction.addToRolePolicy(
           new cdk.aws_iam.PolicyStatement({
             actions: ['apigateway:GET'],
-            resources: ['*'],
-          })
-        );
-
-        // Grant the Lambda function permission to qbusiness:CreatePlugin on application
-        schemaGeneratorFunction.addToRolePolicy(
-          new cdk.aws_iam.PolicyStatement({
-            actions: ['qbusiness:CreatePlugin'],
             resources: ['*'],
           })
         );
