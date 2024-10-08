@@ -10,6 +10,8 @@ This allows one to understand their code base and generate detailed next steps t
 ### Pre-requisites
 You need to have an AWS account and an IAM Role/User with permissions to create and manage the necessary resources and components for this application. (If you do not have an AWS account, please see [How do I create and activate a new Amazon Web Services account?](https://aws.amazon.com/premiumsupport/knowledge-center/create-and-activate-aws-account/))
 
+Your AWS account will also need to have Bedrock model access to Claude 3 Sonnet and Titan Embeddings G1 - Text. This can be requested using the AWS console.
+
 ### 1. Deploy the stack
 
 We've made this easy by providing pre-built AWS CloudFormation templates that deploy everything you need in your AWS account.
