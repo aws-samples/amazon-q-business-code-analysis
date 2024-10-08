@@ -5,18 +5,18 @@ import boto3
 import os
 import uuid
 
-MODEL_ID = "anthropic.claude-3-opus-20240229-v1:0"
+MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
 TEMPERATURE = 0
 MAX_TOKENS = 4096
 AMAZON_Q_APP_ID = os.environ["AMAZON_Q_APP_ID"]
 INDEX_ID = os.environ["Q_APP_INDEX"]
 NEPTUNE_GRAPH_ID = os.environ.get("NEPTUNE_GRAPH_ID")
 ROLE_ARN = os.environ["Q_APP_ROLE_ARN"]
+AGENT_KNOWLEDGE_BUCKET_NAME = os.environ["AGENT_KNOWLEDGE_BUCKET"]
 
 graph_llm = ChatBedrock(
     model_kwargs={"temperature":TEMPERATURE}, 
     model_id=MODEL_ID,
-    region_name="us-west-2",
 )
 amazon_q = boto3.client('qbusiness')
 neptune_graph = boto3.client('neptune-graph')
@@ -201,28 +201,14 @@ class AmazonQTool:
     def add_info_to_amazon_q(self, _input):
         """Useful to add knowledge to Amazon Q.
         The input to this tool should be a Q&A pair"""
-        # Input is plain text
-        _id = str(uuid.uuid4())
-        amazon_q.batch_put_document(
-            applicationId=AMAZON_Q_APP_ID,
-            indexId=INDEX_ID,
-            roleArn=ROLE_ARN,
-            documents=[
-                {
-                    'id': _id,
-                    'contentType': 'PLAIN_TEXT',
-                    'title': _id,
-                    'content':{
-                        'blob': _input
-                    },
-                    'attributes': [
-                        {
-                            'name': 'url',
-                            'value': {
-                                'stringValue': 'AI Generated'+_id
-                            }
-                        }
-                    ]
-                },
-            ]
-        )
+        try:
+            # Input is plain text
+            _id = str(uuid.uuid4())
+            s3 = boto3.client('s3')
+            # Parse input <entry><file_name>application/component/data-flow.txt</file_name><content>Answer to 'How does data flow through X application?' Include key components, data transformations, and relevant code snippets or architecture diagrams.</content></entry>Example: <entry><file_name>e-commerce/order-processing/data-flow.txt</file_name><content>Data flow in the order processing system: 1) User submits order via REST API. 2) OrderService validates and persists order in database. 3) KafkaProducer sends order to 'new-orders' topic. 4) InventoryService consumes message, updates stock. 5) ShippingService prepares shipment. Key components: API Gateway, OrderService, KafkaProducer, InventoryService, ShippingService. Source: https://github.com/example/e-commerce-app</content></entry>
+            file_name = _input.split('<file_name>')[1].split('</file_name>')[0]
+            # Dump all input into S3 using the file_name as the key
+            s3.put_object(Bucket=AGENT_KNOWLEDGE_BUCKET_NAME, Key=file_name, Body=_input)
+        except Exception as e:
+            return "Failed to add info to Amazon Q: " + str(e)
+        

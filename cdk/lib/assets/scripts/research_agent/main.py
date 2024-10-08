@@ -9,11 +9,12 @@ from tools.file_tool import FileTool
 from tools.amazon_q_tool import AmazonQTool
 from langchain_customization.callback_manager import CallbackManager
 from langchain_customization.custom_classes import CustomPromptTemplate, CustomOutputParser
+import argparse
 
 # Constants
 MAX_META_ITERS = 5
 TEMPERATURE = 0.7
-MODEL_ID = "anthropic.claude-3-opus-20240229-v1:0"
+MODEL_ID = "anthropic.claude-3-5-sonnet-20240620-v1:0"
 TIMEOUT = 9999
 STREAMING = True
 
@@ -23,6 +24,7 @@ file_tool = FileTool()
 amazon_q_tool = AmazonQTool()
 
 enable_graph = os.environ.get("ENABLE_GRAPH", "false")
+s3_bucket = os.environ.get("S3_BUCKET", None)
 
 tools = [
     Tool(
@@ -38,9 +40,9 @@ tools = [
         of length two, representing the path of the file."""
     ),
     Tool(
-        name="Add knowledge to Amazon Q",
+        name="Add knowledge to Amazon Q Data Lake",
         func=amazon_q_tool.add_info_to_amazon_q,
-        description="A conversational knowledge base based on semantic similarity. Use this tool to add information to the Amazon Q knowledge base. Input works best as question and answer pairs. You can include multiple pairs in the same input. Try to make it as specific as possible to avoid ambiguity."
+        description="Add detailed information about code and data flow to the Amazon Q data lake. Use this XML format:<entry><file_name>application/component/data-flow.txt</file_name><content>Answer to 'How does data flow through X application?' Include key components, data transformations, and relevant code snippets or architecture diagrams.</content></entry>Example: <entry><file_name>e-commerce/order-processing/data-flow.txt</file_name><content>Data flow in the order processing system: 1) User submits order via REST API. 2) OrderService validates and persists order in database. 3) KafkaProducer sends order to 'new-orders' topic. 4) InventoryService consumes message, updates stock. 5) ShippingService prepares shipment. Key components: API Gateway, OrderService, KafkaProducer, InventoryService, ShippingService. Source: https://github.com/example/e-commerce-app</content></entry>"
     )
 ]
 
@@ -75,7 +77,6 @@ cb = CallbackManager()
 agent_llm = ChatBedrock(
     model_kwargs={"temperature":TEMPERATURE}, 
     model_id=MODEL_ID,
-    region_name="us-west-2",
     callbacks=[cb],
 )
 
@@ -176,7 +177,6 @@ The goal we are trying to accomplish is the following: {goal}.
         llm=ChatBedrock(
             model_kwargs={"temperature":TEMPERATURE}, 
             model_id=MODEL_ID,
-            region_name="us-west-2"
         ),
         verbose=True, 
     )
@@ -250,7 +250,6 @@ def initialize_meta_chain():
         llm=ChatBedrock(
             model_kwargs={"temperature":TEMPERATURE}, 
             model_id=MODEL_ID,
-            region_name="us-west-2"
         ),
         prompt=meta_prompt, 
         verbose=True, 
@@ -273,10 +272,9 @@ def initialize_evaluation_chain():
         llm=ChatBedrock(
             model_kwargs={"temperature":TEMPERATURE}, 
             model_id=MODEL_ID,
-            region_name="us-west-2"
         ),
         prompt=evaluation_prompt, 
-        verbose=True, 
+        verbose=True,
     )
     return evaluation_chain
 
@@ -300,7 +298,24 @@ def get_new_instructions(meta_output):
     
     return constraints, tips
 
-def main(goal, max_meta_iters=5):
+def parse_arguments():
+    """
+    Parses command-line arguments.
+    
+    Returns:
+        goal (str): The parsed goal from the command-line arguments or from a text file.
+    """
+    parser = argparse.ArgumentParser(description="AI Meta Iteration Script")
+    parser.add_argument("--goal", help="Specify the goal", required=True)
+    args = parser.parse_args()
+
+    if args.goal.endswith('.txt'):
+        with open(args.goal, 'r') as file:
+            return file.read().strip()
+
+    return args.goal
+
+def main(goal, max_meta_iters=2):
     """Main execution function.
 
     Args:
@@ -312,8 +327,7 @@ def main(goal, max_meta_iters=5):
     """
     david_instantiation_prompt = get_init_prompt()
     constraints = "You cannot use the open command. Everything must be done in the terminal. You cannot use nano or vim."
-    tips = """You are in a mac zshell. You are already authenticated with AWS. To write to a file use the File Writer tool. Use non-blocking commands like cdk deploy --require-approval never. To write multiple commands use &&. 
-    Use the Chat with Reasoning Graph (if available) and Amazon Q tool, add info to amazon q and the reasoning graph (if available) to help you with your work and to save your progress for future agents who continue from where you left off."""
+    tips = f"""You are in an Ubuntu runtime. You are already authenticated with AWS. To write to a file use the File Writer tool. Use non-blocking commands like cdk deploy --require-approval never. To write multiple commands use &&. You are already a sudo user."""
     world_state_chain = initialize_world_state_chain()
     current_world_state = "The world is empty and has just been initialized."
     evaluation_chain = initialize_evaluation_chain()
@@ -384,8 +398,5 @@ if __name__ == '__main__':
 
     Here we set the goal and call the main function.
     """
-    goal = f"""Clone the <repo/> and document everything about it in the reasoning graph and Amazon Q.
-    The reasoning graph (if available) and Amazon Q should be populated as much as possible so that someone can
-    immediately start working on it by using a combination of Amazon Q and the Reasoning Graph (if available).
-    <repo>{os.environ["REPO_URL"]}</repo>"""
+    goal = parse_arguments()
     main(goal)
