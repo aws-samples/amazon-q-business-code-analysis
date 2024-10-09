@@ -53,7 +53,7 @@ async function main() {
       const outFile = `${path.join('cdk.out', `asset${assetHash}`)}.zip`;
       console.log(`Zipping ${sourceDir} and custom bucket asset: ${assetHash}, to zip file ${outFile}`);
 
-      zipDirectory(sourceDir, outFile);
+      await zipDirectory(sourceDir, outFile);
       console.log(`uploading asset ${outFile} to bucket ${destinationBucket} file ${assetHash}.zip`)
       await uploadAsset(
         outFile,
@@ -211,17 +211,29 @@ async function zipAsset(S3Key) {
 }
 
 
-function zipDirectory(sourceDir, outFile) {
+async function zipDirectory(sourceDir, outFile) {
   const archive = archiver('zip', { zlib: { level: 9 }});
   const stream = fs.createWriteStream(outFile);
   console.log(`Zipping folder ${sourceDir}...`)
 
-  stream.on('close', function() { console.log('done') });
+  let isComplete = false;
+
+  stream.on('close', function() { isComplete=true; console.log('done') });
   archive.on('error', function(err) { console.log(`error ${err.message}`); throw err });
   
   archive.pipe(stream);
-  
-  archive.directory(sourceDir, '/').finalize();
+
+  archive.directory(sourceDir, '/');
+  archive.finalize();
+
+  // after finalize() wait till isComplete is not set to true
+  // otherwise files are not closed and upload fails.
+  while (!isComplete) {
+    console.log("waiting...");
+    await new Promise((resolve) => {
+      setTimeout(resolve, 100);
+    });
+  }
 }
 
 
