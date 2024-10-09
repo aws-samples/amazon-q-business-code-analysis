@@ -307,16 +307,6 @@ export class AwsBatchAnalysisConstruct extends Construct {
           restApiName: 'QBusinessAgentApi',
           description: 'API Gateway for submitting agent job',
         });
-
-        const auth = new cdk.aws_apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
-          cognitoUserPools: [props.userPool],
-        });
-
-        // Add API Gateway that invokes Lambda to submit agent job
-        const agentApi = new cdk.aws_apigateway.RestApi(this, 'QBusinessAgentApi', {
-          restApiName: 'QBusinessAgentApi',
-          description: 'API Gateway for submitting agent job',
-        });
         
         this.apiUrl = agentApi.url;
         
