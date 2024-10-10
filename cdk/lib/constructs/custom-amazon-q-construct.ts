@@ -5,7 +5,6 @@ export interface CustomResourceProps extends cdk.StackProps {
   readonly amazon_q_app_name: string;
   readonly amazon_q_app_role_arn: string;
   readonly amazon_q_web_exp_role_arn: string;
-  readonly boto3Layer: cdk.aws_lambda.LayerVersion;
   readonly idcArn: string;
 }
 

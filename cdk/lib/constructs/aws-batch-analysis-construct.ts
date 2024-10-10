@@ -13,7 +13,6 @@ export interface AwsBatchAnalysisProps extends cdk.StackProps {
   readonly qAppDataSourceId: string;
   readonly qAppRoleArn: string;
   readonly repository: string;
-  readonly boto3Layer: lambda.LayerVersion;
   readonly sshUrl: string;
   readonly sshKeyName: string;
   readonly neptuneGraphId: string;
@@ -223,7 +222,6 @@ export class AwsBatchAnalysisConstruct extends Construct {
           ENABLE_GRAPH: props.enableGraphParam.valueAsString,
           NEPTUNE_GRAPH_ID: props.neptuneGraphId,
         },
-        layers: [props.boto3Layer],
         role: submitJobRole,
         timeout: cdk.Duration.minutes(5),
         memorySize: 512,
@@ -284,7 +282,6 @@ export class AwsBatchAnalysisConstruct extends Construct {
             INITIAL_GOAL: initialGoal,
             AGENT_KNOWLEDGE_BUCKET: agentKnowledgeBucket.bucketName
           },
-          layers: [props.boto3Layer],
           role: submitJobRole,
           timeout: cdk.Duration.minutes(5),
           memorySize: 512,

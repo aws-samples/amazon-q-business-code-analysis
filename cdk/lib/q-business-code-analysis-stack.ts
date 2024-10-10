@@ -85,21 +85,13 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       roleName: qAppRoleName
     });
 
-    const layer = new cdk.aws_lambda.LayerVersion(this, 'layerWithQBusiness', {
-      code: cdk.aws_lambda.Code.fromAsset('lib/assets/lambda-layer/boto3_v1.34.109_py3.12.zip'),
-      compatibleRuntimes: [cdk.aws_lambda.Runtime.PYTHON_3_12],
-      description: 'Boto3 v1.34.109',
-    });
-
     const qBusinessConstruct = new CustomQBusinessConstruct(this, 'QBusinessAppConstruct', {
       amazon_q_app_name: qAppName,
       amazon_q_app_role_arn: qIamRole.app_role.roleArn,
       amazon_q_web_exp_role_arn: qIamRole.web_exp_role.roleArn,
-      boto3Layer: layer,
       idcArn: idcArn
     });
     
-    qBusinessConstruct.node.addDependency(layer);
     qBusinessConstruct.node.addDependency(qIamRole);
 
     new cdk.CfnOutput(this, 'QBusinessAppName', {
@@ -148,7 +140,6 @@ export class QBusinessCodeAnalysisStack extends cdk.Stack {
       qAppIndexId: qBusinessConstruct.indexId,
       qAppDataSourceId: qBusinessConstruct.dataSourceId,
       repository: repositoryUrl,
-      boto3Layer: layer,
       sshUrl: sshUrl,
       sshKeyName: sshKeyName,
       enableResearchAgentParam: enableResearchAgentParam,
